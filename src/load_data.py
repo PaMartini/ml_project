@@ -2,6 +2,8 @@ import os
 
 import pandas as pd
 import numpy as np
+import sklearn as sk
+import sklearn.model_selection
 import matplotlib.pyplot as plt
 from typing import *
 
@@ -31,10 +33,83 @@ def preprocess_wine(data: pd.DataFrame, verbosity: bool = False) -> pd.DataFrame
 
     if verbosity:
         print(data.head())
-
+        print(f"There are {data.loc[:, 'label'].sum()} out of "
+              f"{data.shape[0]} samples with good quality.")
     return data
 
 
+def perform_train_val_test_split(data: pd.DataFrame,
+                                 split: Tuple[float, float, float] = (0.6, 0.2, 0.2),
+                                 shuffle: bool = False,
+                                 preserve_class_dist: bool = False,
+                                 label_column: str = 'label') -> Union[pd.DataFrame, tuple[pd.DataFrame, ...]]:
+    """
+    Method for splitting the data set into a training, validation and test set.
+    :param data: Pandas data frame containing the data.
+    :param split: Percentages of training, validation, test set.
+    :param shuffle: Whether to shuffle the data or not.
+    :param preserve_class_dist: Whether to preserve the class distribution during sampling.
+    :param label_column: Name of the column with the labels.
+    :return: Data frames according to the chosen split.
+    """
+    assert sum(split) == 1 and np.all(np.array(split) >= 0), \
+        "Train, validation and test set split must be percentages that sum up to 1."
+    assert split[0] > 0, "Training set can not be empty."
+    assert shuffle if preserve_class_dist else shuffle or not shuffle, \
+        "Shuffle must be True if preserve_class_dist is True."
+    labels = data.loc[:, label_column].values
+    if split[1] == 0 and split[2] == 0:
+        return data
+    elif split[1] == 0:
+        if preserve_class_dist:
+            train_data, test_data = sk.model_selection.train_test_split(data,
+                                                                        test_size=split[2],
+                                                                        train_size=split[0],
+                                                                        shuffle=shuffle,
+                                                                        stratify=labels)
+        else:
+            train_data, test_data = sk.model_selection.train_test_split(data,
+                                                                        test_size=split[2],
+                                                                        train_size=split[0],
+                                                                        shuffle=shuffle)
+        return train_data, test_data
+    elif split[2] == 0:
+        if preserve_class_dist:
+            train_data, val_data = sk.model_selection.train_test_split(data,
+                                                                       test_size=split[1],
+                                                                       train_size=split[0],
+                                                                       shuffle=shuffle,
+                                                                       stratify=labels)
+        else:
+            train_data, val_data = sk.model_selection.train_test_split(data,
+                                                                       test_size=split[1],
+                                                                       train_size=split[0],
+                                                                       shuffle=shuffle)
+        return train_data, val_data
+    else:
+        if preserve_class_dist:
+            train_data, dummy = sk.model_selection.train_test_split(data,
+                                                                    test_size=split[1] + split[2],
+                                                                    train_size=split[0],
+                                                                    shuffle=shuffle,
+                                                                    stratify=labels)
+            dummy_labels = dummy.loc[:, label_column].values
+            val_data, test_data = sk.model_selection.train_test_split(dummy,
+                                                                      test_size=split[2],
+                                                                      train_size=split[1],
+                                                                      shuffle=shuffle,
+                                                                      stratify=dummy_labels)
+            return train_data, val_data, test_data
+        else:
+            train_data, dummy = sk.model_selection.train_test_split(data,
+                                                                    test_size=split[1] + split[2],
+                                                                    train_size=split[0],
+                                                                    shuffle=shuffle)
+            val_data, test_data = sk.model_selection.train_test_split(dummy,
+                                                                      test_size=split[2],
+                                                                      train_size=split[1],
+                                                                      shuffle=shuffle)
+            return train_data, val_data, test_data
 
 
 
@@ -52,7 +127,16 @@ if __name__=='__main__':
     print(os.getcwd())
     fn_red = "../data/wine_data/winequality-red.csv"
     data_red = load_wine(filename=fn_red, verbosity=False)
-    preprocess_wine(data_red, verbosity=True)
+    data_red = preprocess_wine(data_red, verbosity=False)
+    #traind, vald, testd = perform_train_val_test_split(data=data_red,
+    #                                                   split=(0.6, 0.2, 0.2),
+    #                                                   shuffle=False,
+    #                                                   preserve_class_dist=False)
+    traind, testd = perform_train_val_test_split(data=data_red,
+                                                 split=(0.8, 0, 0.2),
+                                                 shuffle=True,
+                                                 preserve_class_dist=False)
+    print(traind, testd)
 
 
 
