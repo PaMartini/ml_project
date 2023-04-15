@@ -1,4 +1,3 @@
-import os
 
 import pandas as pd
 import numpy as np
@@ -6,6 +5,14 @@ import sklearn as sk
 import sklearn.model_selection
 import matplotlib.pyplot as plt
 from typing import *
+
+
+def load_comma_sep_csv(filename: str, verbosity: bool = False) -> pd.DataFrame:
+    data = pd.read_csv(filename, sep=",")
+    if verbosity:
+        print(data.head())
+        print(f"The features are {list(data.columns)}")
+    return data
 
 
 def load_wine(filename: str, verbosity: bool = False) -> pd.DataFrame:
@@ -112,31 +119,27 @@ def perform_train_val_test_split(data: pd.DataFrame,
             return train_data, val_data, test_data
 
 
-
-
-def load_comma_sep_csv(filename: str, verbosity: bool = False) -> pd.DataFrame:
-    data = pd.read_csv(filename, sep=",")
-    if verbosity:
-        print(data.head())
-        print(f"The features are {list(data.columns)}")
-    return data
-
-
-
-if __name__=='__main__':
-    print(os.getcwd())
+def data_pipeline_redwine() -> Tuple[pd.DataFrame, ...]:
+    """
+    Example workflow for loading and preprocessing of redwine data set.
+    :return: Redwine data set, preprocessed and split into training and test set.
+    """
     fn_red = "../data/wine_data/winequality-red.csv"
     data_red = load_wine(filename=fn_red, verbosity=False)
     data_red = preprocess_wine(data_red, verbosity=False)
-    #traind, vald, testd = perform_train_val_test_split(data=data_red,
+    # traind, vald, testd = perform_train_val_test_split(data=data_red,
     #                                                   split=(0.6, 0.2, 0.2),
-    #                                                   shuffle=False,
-    #                                                   preserve_class_dist=False)
+    #                                                   shuffle=True,
+    #                                                   preserve_class_dist=True)
     traind, testd = perform_train_val_test_split(data=data_red,
                                                  split=(0.8, 0, 0.2),
                                                  shuffle=True,
-                                                 preserve_class_dist=False)
-    print(traind, testd)
+                                                 preserve_class_dist=True)
+    return traind, testd
+
+
+if __name__ == '__main__':
+    print(data_pipeline_redwine())
 
 
 
