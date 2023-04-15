@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import sklearn as sk
 import sklearn.model_selection
+from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 from typing import *
 
@@ -27,7 +28,7 @@ def load_wine(filename: str, verbosity: bool = False) -> pd.DataFrame:
     return data
 
 
-def preprocess_wine(data: pd.DataFrame, verbosity: bool = False) -> pd.DataFrame:
+def preprocess_wine(data: pd.DataFrame, pca_dim: int = -1, verbosity: bool = False) -> pd.DataFrame:
     # Normalize data
     means = np.mean(data.iloc[:, 0:(data.shape[1] - 1)].values, axis=0)
     stdev = np.std(data.iloc[:, 0:(data.shape[1] - 1)].values, axis=0)
@@ -38,10 +39,20 @@ def preprocess_wine(data: pd.DataFrame, verbosity: bool = False) -> pd.DataFrame
     quality_ratings_bool = (np.array(data.loc[:, 'quality']) > 5).astype(float)
     data["label"] = quality_ratings_bool
 
+    if pca_dim != -1:
+        data, pca = perform_pca_reduction(data=data, pca_dim=pca_dim, label_columns=['quality', 'label'])
+
     if verbosity:
         print(data.head())
         print(f"There are {data.loc[:, 'label'].sum()} out of "
               f"{data.shape[0]} samples with good quality.")
+        if pca_dim != -1:
+            print(f"Performed PCA dimensionality reduction to {pca_dim} principal components.")
+            print("The singular values are:")
+            print(pca.singular_values_)
+            print("The percentage of variance explained by each of the selected components is:")
+            print(pca.explained_variance_ratio_)
+
     return data
 
 
@@ -119,6 +130,31 @@ def perform_train_val_test_split(data: pd.DataFrame,
             return train_data, val_data, test_data
 
 
+def perform_pca_reduction(data: pd.DataFrame, pca_dim: int, label_columns: list[str, ...]) -> tuple[pd.DataFrame, PCA]:
+    """
+    Method for performing a PCA dimensionality reduction on the given data frame.
+    :param data: Pandas data frame containing the data.
+    :param pca_dim: Number of principal components to keep. If -1, no reduction will be computed.
+    :param label_columns: Names of columns with label information. They are excluded from the PCA calculation.
+    :return: Data frame with dimensionality reduced data and unchanged label columns.
+    """
+    if pca_dim == -1:
+        pca_dim = data.shape[1] - len(label_columns)
+    data_w_out_labels = data.drop(columns=label_columns).values
+    data_label_columns = data.loc[:, label_columns]
+    n_features = data_w_out_labels.shape[1]
+    assert 0 < pca_dim <= n_features, \
+        "Number of principal components must be strictly greater than 0 and smaller or equal to the number of features."
+    pca = PCA(n_components=pca_dim)
+    pca.fit(data_w_out_labels)
+
+    pca_dim_red_data = pd.DataFrame(pca.transform(data_w_out_labels))
+
+    pca_data = pd.concat([pca_dim_red_data, data_label_columns], axis=1)
+
+    return pca_data, pca
+
+
 def data_pipeline_redwine() -> Tuple[pd.DataFrame, ...]:
     """
     Example workflow for loading and preprocessing of redwine data set.
@@ -126,7 +162,7 @@ def data_pipeline_redwine() -> Tuple[pd.DataFrame, ...]:
     """
     fn_red = "../data/wine_data/winequality-red.csv"
     data_red = load_wine(filename=fn_red, verbosity=False)
-    data_red = preprocess_wine(data_red, verbosity=False)
+    data_red = preprocess_wine(data_red, pca_dim=-1, verbosity=True)
     # traind, vald, testd = perform_train_val_test_split(data=data_red,
     #                                                   split=(0.6, 0.2, 0.2),
     #                                                   shuffle=True,
