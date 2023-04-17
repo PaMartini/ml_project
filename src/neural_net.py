@@ -7,6 +7,7 @@ from datetime import datetime
 import os
 
 from load_data import *
+from evaluation import *
 
 
 class WineDataset(Dataset):
@@ -87,6 +88,19 @@ def save_ckp(model_state: dict, checkpoint_dir: str = "../checkpoints/") -> None
     print(f'Saved model.')
 
 
+def load_ckp(ckp_name: str,
+             model: Type[nn.Module],
+             optimizer: Type[torch.optim.Optimizer] = None,
+             checkpoint_dir: str = "../checkpoints/",
+             ) -> Tuple[Any, Any, Any]:
+
+    ckp = torch.load(os.path.join(checkpoint_dir, ckp_name))
+    model.load_state_dict(ckp['state_dict'])
+    if optimizer is not None:
+        optimizer.load_state_dict(ckp['optimizer'])
+    return model, optimizer, ckp['epoch']
+
+
 def train_loop(train_loader: DataLoader,
                val_loader: DataLoader,
                model: Type[torch.nn.Module],
@@ -139,7 +153,8 @@ def train_loop(train_loader: DataLoader,
 
     if save:
         model_state = {'state_dict': model.state_dict(),
-                       'optimizer': optimizer.state_dict()}
+                       'optimizer': optimizer.state_dict(),
+                       'epoch': num_epochs}
         save_ckp(model_state=model_state, checkpoint_dir=checkpoint_dir)
 
     return model, train_losses, val_losses
@@ -150,7 +165,7 @@ def run_training():
     model = WineNet(in_size=11, out_size=1)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     loss_fct = nn.BCELoss(reduction='mean')
-    n_epochs = 2
+    n_epochs = 25
     train_loop(train_loader=train_loader,
                val_loader=val_loader,
                model=model,
@@ -160,6 +175,29 @@ def run_training():
                save=True,
                verbosity=True)
 
+# Todo: plot losses
+
+
+def test_model(model_name: str, checkpoint_dir: str = "../checkpoints/"):
+    model = WineNet(in_size=11, out_size=1)
+    model, _, _ = load_ckp(ckp_name=model_name, model=model, checkpoint_dir=checkpoint_dir)
+    _, val_loader = get_data_loaders_wine_data(val_and_test=False, batch_size=1, shuffle=False)
+
+    flatten = nn.Flatten(start_dim=0, end_dim=-1)
+    model_outs = np.zeros(len(val_loader))
+    labels = np.zeros(len(val_loader))
+    for i, data in tqdm(enumerate(val_loader), total=len(val_loader)):
+        x = data[0].to(torch.float32)
+        y = data[1].to(torch.float32)
+        labels[i] = float(flatten(y))
+        model.eval()
+        with torch.no_grad():
+            model_out = model(x)
+            model_outs[i] = float(flatten(model_out))
+
+    preds = (model_outs >= 0.5).astype(float)
+    evaluate_class_predictions(prediction=preds, ground_truth=labels)
+
 
 def check_model():
     model = WineNet()
@@ -167,7 +205,7 @@ def check_model():
 
 
 if __name__ == '__main__':
-
     run_training()
+    # test_model(model_name='model_20230418-001154.pt')
     print('done')
 
