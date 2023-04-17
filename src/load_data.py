@@ -155,7 +155,7 @@ def perform_pca_reduction(data: pd.DataFrame, pca_dim: int, label_columns: list[
     return pca_data, pca
 
 
-def data_pipeline_redwine() -> Tuple[pd.DataFrame, ...]:
+def data_pipeline_redwine(val_and_test: bool = False) -> Tuple[pd.DataFrame, ...]:
     """
     Example workflow for loading and preprocessing of redwine data set.
     :return: Redwine data set, preprocessed and split into training and test set.
@@ -163,15 +163,18 @@ def data_pipeline_redwine() -> Tuple[pd.DataFrame, ...]:
     fn_red = "../data/wine_data/winequality-red.csv"
     data_red = load_wine(filename=fn_red, verbosity=False)
     data_red = preprocess_wine(data_red, pca_dim=-1, verbosity=True)
-    # traind, vald, testd = perform_train_val_test_split(data=data_red,
-    #                                                   split=(0.6, 0.2, 0.2),
-    #                                                   shuffle=True,
-    #                                                   preserve_class_dist=True)
-    traind, testd = perform_train_val_test_split(data=data_red,
-                                                 split=(0.8, 0, 0.2),
-                                                 shuffle=True,
-                                                 preserve_class_dist=True)
-    return traind, testd
+    if val_and_test:
+        traind, vald, testd = perform_train_val_test_split(data=data_red,
+                                                           split=(0.6, 0.2, 0.2),
+                                                           shuffle=True,
+                                                           preserve_class_dist=True)
+        return traind, vald, testd
+    else:
+        traind, testd = perform_train_val_test_split(data=data_red,
+                                                     split=(0.8, 0, 0.2),
+                                                     shuffle=True,
+                                                     preserve_class_dist=True)
+        return traind, testd
 
 
 if __name__ == '__main__':
