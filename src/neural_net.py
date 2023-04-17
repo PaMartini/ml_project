@@ -1,8 +1,10 @@
-
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
-import pandas as pd
+from torchinfo import summary
+from tqdm import tqdm
+from datetime import datetime
+import os
 
 from load_data import *
 
@@ -79,11 +81,76 @@ class WineNet(torch.nn.Module):
         return x
 
 
-# Todo
+def save_ckp(model_state: dict, checkpoint_dir: str = "../checkpoints/") -> None:
+    fp = os.path.join(checkpoint_dir, 'model_' + datetime.now().strftime("%Y%m%d-%H%M%S") + '.pt')
+    torch.save(model_state, fp)
+    print(f'Saved at model')
+
+
+def train_loop(train_loader: DataLoader,
+               val_loader: DataLoader,
+               model: Type[torch.nn.Module],
+               optimizer: Any,
+               loss_fct: Any,
+               num_epochs: int = 100,
+               save: bool = False,
+               checkpoint_dir: str = "../checkpoints/") -> Tuple[Type[nn.Module], np.ndarray, np.ndarray]:
+
+    train_losses = np.zeros(num_epochs)
+    val_losses = np.zeros(num_epochs)
+
+    for epoch in range(num_epochs):
+        running_train_loss = 0
+        for i, data in tqdm(enumerate(train_loader), total=len(train_loader)):
+            x = data[0]
+            y = data[1]
+            model.train()
+            model_out = model(x)
+            loss = loss_fct(model_out, y)
+            loss.backward()
+            optimizer.step()
+
+            running_train_loss += loss.item()
+
+        running_val_loss = 0
+        for i, data in tqdm(enumerate(val_loader), total=len(val_loader)):
+            x = data[0]
+            y = data[1]
+            model.eval()
+            with torch.no_grad():
+                model_out = model(x)
+                loss = loss_fct(model_out, y)
+                running_val_loss += loss.item()
+
+        train_losses[epoch] = running_train_loss / len(train_loader)
+        val_losses[epoch] = running_val_loss / len(val_loader)
+
+    if save:
+        model_state = {'state_dict': model.state_dict(),
+                       'optimizer': optimizer.state_dict()}
+        save_ckp(model_state=model_state, checkpoint_dir=checkpoint_dir)
+
+
+    return model, train_losses, val_losses
+
+
+def run_training():
+    train_loader, val_loader = get_data_loaders_wine_data(val_and_test=False, batch_size=20, shuffle=True)
+    model = WineNet(in_size=11, out_size=1)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    loss_fct = nn.BCELoss(reduction='mean')
+    n_epochs = 2
+    train_loop(train_loader=train_loader,
+               val_loader=val_loader,
+               model=model,
+               optimizer=optimizer,
+               loss_fct=loss_fct,
+               num_epochs=n_epochs,
+               save=True)
+
 
 if __name__ == '__main__':
-    train_loader, _ = get_data_loaders_wine_data(val_and_test=False, batch_size=20, shuffle=True)
-    for item in train_loader:
-        print(item[0])
-        print(item[1])
+
+    model = WineNet()
+    summary(model, input_size=(11,))
 
