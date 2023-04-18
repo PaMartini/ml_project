@@ -1,9 +1,10 @@
 
 import numpy as np
 import sklearn.metrics as metr
+from typing import *
 
 
-def evaluate_class_predictions(prediction: np.ndarray, ground_truth: np.ndarray) -> None:
+def evaluate_class_predictions(prediction: np.ndarray, ground_truth: np.ndarray) -> Tuple[float, ...]:
     """
     Function for evaluating the performance of a model that returns classes as predictions (not class probabilities).
     Works for binary case and multi-class case.
@@ -20,5 +21,5 @@ def evaluate_class_predictions(prediction: np.ndarray, ground_truth: np.ndarray)
     print(f"## Recall: {recall}")
     print(f"## F1-score: {f1}")
 
-    return None
+    return accuracy, precision, recall, f1
 
