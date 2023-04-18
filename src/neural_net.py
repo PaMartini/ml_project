@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
@@ -5,6 +6,7 @@ from torchinfo import summary
 from tqdm import tqdm
 from datetime import datetime
 import os
+import pickle
 
 from load_data import *
 from evaluation import *
@@ -107,12 +109,18 @@ def train_loop(train_loader: DataLoader,
                optimizer: Any,
                loss_fct: Any,
                num_epochs: int = 100,
+               track_metrics: bool = False,
                save: bool = False,
                checkpoint_dir: str = "../checkpoints/",
-               verbosity: bool = False) -> Tuple[Type[nn.Module], np.ndarray, np.ndarray]:
+               verbosity: bool = False) -> Tuple[Type[nn.Module], np.ndarray, np.ndarray, Union[dict, None]]:
 
     train_losses = np.zeros(num_epochs)
     val_losses = np.zeros(num_epochs)
+    if track_metrics:
+        accuracy = np.zeros(num_epochs)
+        precision = np.zeros(num_epochs)
+        recall = np.zeros(num_epochs)
+        f1 = np.zeros(num_epochs)
 
     flatten = nn.Flatten(start_dim=0, end_dim=-1)
 
@@ -134,6 +142,11 @@ def train_loop(train_loader: DataLoader,
             running_train_loss += loss.item()
 
         running_val_loss = 0
+        if track_metrics:
+            running_acc = 0
+            running_pre = 0
+            running_rec = 0
+            running_f1 = 0
         for i, data in tqdm(enumerate(val_loader), total=len(val_loader)):
             x = data[0].to(torch.float32)
             y = data[1].to(torch.float32)
@@ -144,8 +157,21 @@ def train_loop(train_loader: DataLoader,
                 loss = loss_fct(model_out, y)
                 running_val_loss += loss.item()
 
+                if track_metrics:
+                    preds = np.array((model_out >= 0.5)).astype(float)
+                    acc, pre, rec, f = evaluate_class_predictions(prediction=preds, ground_truth=y, verbosity=False)
+                    running_acc += acc
+                    running_pre += pre
+                    running_rec += rec
+                    running_f1 += f
+
         train_losses[epoch] = running_train_loss / len(train_loader)
         val_losses[epoch] = running_val_loss / len(val_loader)
+        if track_metrics:
+            accuracy[epoch] = running_acc / len(val_loader)
+            precision[epoch] = running_pre / len(val_loader)
+            recall[epoch] = running_rec / len(val_loader)
+            f1[epoch] = running_f1 / len(val_loader)
 
         if verbosity:
             print(f"### Current train loss is {train_losses[epoch]} ###")
@@ -157,25 +183,55 @@ def train_loop(train_loader: DataLoader,
                        'epoch': num_epochs}
         save_ckp(model_state=model_state, checkpoint_dir=checkpoint_dir)
 
-    return model, train_losses, val_losses
+    if track_metrics:
+        metrics_dict = {'accuracy': accuracy, 'precision': precision, 'recall': recall, 'f1': f1}
+    else:
+        metrics_dict = None
+
+    return model, train_losses, val_losses, metrics_dict
 
 
-def run_training():
+def run_training(n_epochs: int = 20, plot_losses: bool = False, save_losses: bool = False, plot_save_metrics: bool = False):
     train_loader, val_loader = get_data_loaders_wine_data(val_and_test=False, batch_size=20, shuffle=True)
     model = WineNet(in_size=11, out_size=1)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
     loss_fct = nn.BCELoss(reduction='mean')
-    n_epochs = 25
-    train_loop(train_loader=train_loader,
-               val_loader=val_loader,
-               model=model,
-               optimizer=optimizer,
-               loss_fct=loss_fct,
-               num_epochs=n_epochs,
-               save=True,
-               verbosity=True)
 
-# Todo: plot losses
+    trained_model, train_losses, val_losses, metrics_dict = train_loop(train_loader=train_loader,
+                                                                       val_loader=val_loader,
+                                                                       model=model,
+                                                                       optimizer=optimizer,
+                                                                       loss_fct=loss_fct,
+                                                                       num_epochs=n_epochs,
+                                                                       track_metrics=plot_save_metrics,
+                                                                       save=True,
+                                                                       verbosity=True)
+    if save_losses:
+        np.save('train_losses.npy', train_losses)
+        np.save('val_losses.npy', val_losses)
+    if plot_losses:
+        plot_loss(train_loss=train_losses, val_loss=val_losses)
+
+    if plot_save_metrics:
+        with open('metrics_dict.pickle', 'wb') as f:
+            pickle.dump(metrics_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
+        plot_metrics(metrics_dict=metrics_dict)
+
+
+def plot_loss(train_loss: np.ndarray, val_loss: np.ndarray):
+    plt.plot(np.arange(len(train_loss)), train_loss, label='Training loss')
+    plt.plot(np.arange(len(val_loss)), val_loss, label='Validation loss')
+    plt.yscale('log')
+    plt.legend()
+    # plt.savefig('losses_plot.png')
+    plt.show()
+
+
+def plot_metrics(metrics_dict: dict):
+    for key in metrics_dict:
+        plt.plot(np.arange(len(metrics_dict[key])), metrics_dict[key], label=key)
+    plt.legend()
+    plt.show()
 
 
 def test_model(model_name: str, checkpoint_dir: str = "../checkpoints/"):
@@ -205,7 +261,7 @@ def check_model():
 
 
 if __name__ == '__main__':
-    run_training()
-    # test_model(model_name='model_20230418-001154.pt')
+    run_training(n_epochs=100, plot_losses=True, save_losses=False, plot_save_metrics=True)
+    # test_model(model_name='model_20230418-090242.pt')
     print('done')
 
