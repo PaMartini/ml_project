@@ -42,7 +42,7 @@ def train_svm_model(train_data,
 
         pred = model.predict(X=x_test)
 
-        evaluate_class_predictions(prediction=pred, ground_truth=y_test)
+        evaluate_class_predictions(prediction=pred, ground_truth=y_test, verbosity=True)
 
     return model
 
