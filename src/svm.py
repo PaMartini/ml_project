@@ -7,8 +7,9 @@ from load_data import data_pipeline_redwine
 from evaluation import evaluate_class_predictions
 
 
-def train_svm_model(train_data,
+def train_svm_model(train_data: pd.DataFrame,
                     label_column: str = 'label',
+                    config: Union[dict, None] = None,
                     test: bool = False,
                     test_data: Union[None, pd.DataFrame] = None,
                     verbosity: bool = False) -> SVC:
@@ -16,6 +17,7 @@ def train_svm_model(train_data,
     Function for training and testing an SVM model.
     :param train_data: Dataframe with train data.
     :param label_column: Name of the column with the labels.
+    :param config: Dictionary with parameters of SVM model.
     :param test: Whether to evaluate the trained model on the test set or not.
     :param test_data: Dataframe with test data.
     :param verbosity: Whether to print information on the trained model or not.
@@ -23,7 +25,23 @@ def train_svm_model(train_data,
     """
     x = train_data.drop(columns=[label_column]).values
     y = train_data.loc[:, label_column].values
-    model = SVC(C=1, kernel='linear', shrinking=False, probability=False, tol=1e-3, max_iter=-1, class_weight=None)
+    if config is None:
+        config = {'C': 1,
+                  'kernel': 'linear',
+                  'shrinking': False,
+                  'probability': False,
+                  'tol': 1e-3,
+                  'max_iter': -1,
+                  'class_weight': None}
+
+    model = SVC(C=config['C'],
+                kernel=config['kernel'],
+                shrinking=config['shrinking'],
+                probability=config['probability'],
+                tol=config['tol'],
+                max_iter=config['max_iter'],
+                class_weight=config['class_weight'])
+
     model.fit(X=x, y=y, sample_weight=None)
 
     if verbosity:
@@ -47,10 +65,19 @@ def train_svm_model(train_data,
     return model
 
 
+def parameter_tuning_svm(train_data: pd.DataFrame,
+                         val_data: pd.DataFrame,
+                         label_column: str = 'label',
+                         verbosity: bool = False) -> dict:
+    pass
+
+
+
 if __name__ == '__main__':
-    traind, testd = data_pipeline_redwine()
+    traind, vald, testd = data_pipeline_redwine(val_and_test=True)
     # Delete quality columns in data frames:
     traind = traind.drop(columns=['quality'])
+    vald = vald.drop(columns=['quality'])
     testd = testd.drop(columns=['quality'])
     # Train model
     train_svm_model(train_data=traind, label_column='label', test=True, test_data=testd, verbosity=True)
