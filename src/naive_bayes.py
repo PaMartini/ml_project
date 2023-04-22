@@ -1,5 +1,6 @@
 
 from typing import *
+import numpy as np
 import pandas as pd
 from sklearn.naive_bayes import GaussianNB
 
@@ -33,20 +34,36 @@ def train_gaussian_naive_bayes(train_data,
 
         pred = model.predict(X=x_test)
 
-        evaluate_class_predictions(prediction=pred, ground_truth=y_test, verbosity=True)
+        if np.unique(y).shape[0] <= 2:
+            evaluate_class_predictions(prediction=pred, ground_truth=y_test, verbosity=True)
+        else:
+            evaluate_class_predictions(prediction=pred, ground_truth=y_test, multiclass=True, verbosity=True)
 
     return model
 
 
 if __name__ == '__main__':
-    traind, testd = data_pipeline_redwine()
-    # Delete quality columns in data frames:
-    traind = traind.drop(columns=['quality'])
-    testd = testd.drop(columns=['quality'])
-    train_gaussian_naive_bayes(train_data=traind,
-                               label_column='label',
-                               config=None,
-                               test=True,
-                               test_data=testd,
-                               verbosity=True)
+    multiclass = False
+    if not multiclass:
+        traind, testd = data_pipeline_redwine()
+        # Delete quality columns in data frames:
+        traind = traind.drop(columns=['quality'])
+        testd = testd.drop(columns=['quality'])
+        train_gaussian_naive_bayes(train_data=traind,
+                                   label_column='label',
+                                   config=None,
+                                   test=True,
+                                   test_data=testd,
+                                   verbosity=True)
+    else:
+        traind, testd = data_pipeline_redwine()
+        # Delete label columns in data frames:
+        traind = traind.drop(columns=['label'])
+        testd = testd.drop(columns=['label'])
+        train_gaussian_naive_bayes(train_data=traind,
+                                   label_column='quality',
+                                   config=None,
+                                   test=True,
+                                   test_data=testd,
+                                   verbosity=True)
 

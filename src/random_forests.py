@@ -1,6 +1,7 @@
 
 from typing import *
 import pickle
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.tree import DecisionTreeClassifier
@@ -13,11 +14,11 @@ from auxiliary_functions import parameter_tuning_wrapper
 
 
 def train_dt_classifier(train_data,
-                         label_column: str = 'label',
-                         config: Union[dict, None] = None,
-                         test: bool = False,
-                         test_data: Union[None, pd.DataFrame] = None,
-                         verbosity: bool = False) -> DecisionTreeClassifier:
+                        label_column: str = 'label',
+                        config: Union[dict, None] = None,
+                        test: bool = False,
+                        test_data: Union[None, pd.DataFrame] = None,
+                        verbosity: bool = False) -> DecisionTreeClassifier:
 
     x = train_data.drop(columns=[label_column]).values
     y = train_data.loc[:, label_column].values
@@ -133,13 +134,16 @@ def train_random_forest(train_data,
 
         pred = model.predict(X=x_test)
 
-        evaluate_class_predictions(prediction=pred, ground_truth=y_test, verbosity=True)
+        if np.unique(y).shape[0] <= 2:
+            evaluate_class_predictions(prediction=pred, ground_truth=y_test, verbosity=True)
+        else:
+            evaluate_class_predictions(prediction=pred, ground_truth=y_test, multiclass=True, verbosity=True)
 
     return model
 
 
 def run_parameter_tuning_dt(train_data: pd.DataFrame,
-                             label_column: str = 'label') -> dict:
+                            label_column: str = 'label') -> dict:
 
     config = [
         {'criterion': ['gini', 'entropy', 'log_loss'],

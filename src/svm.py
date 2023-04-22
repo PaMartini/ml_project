@@ -1,9 +1,9 @@
+
 import pickle
 from typing import *
-
+import numpy as np
 import pandas as pd
 from sklearn.svm import SVC
-from sklearn.model_selection import GridSearchCV
 from load_data import data_pipeline_redwine
 from evaluation import evaluate_class_predictions
 from auxiliary_functions import parameter_tuning_wrapper
@@ -66,7 +66,10 @@ def train_svm_model(train_data: pd.DataFrame,
 
         pred = model.predict(X=x_test)
 
-        evaluate_class_predictions(prediction=pred, ground_truth=y_test, verbosity=True)
+        if np.unique(y).shape[0] <= 2:
+            evaluate_class_predictions(prediction=pred, ground_truth=y_test, verbosity=True)
+        else:
+            evaluate_class_predictions(prediction=pred, ground_truth=y_test, multiclass=True, verbosity=True)
 
     return model
 
@@ -96,7 +99,6 @@ def run_parameter_tuning_svm(train_data: pd.DataFrame,
                                            filename='../configurations/best_svm_config.pickle')
 
     return best_config
-
 
 
 if __name__ == '__main__':
