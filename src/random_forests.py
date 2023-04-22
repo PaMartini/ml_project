@@ -78,8 +78,63 @@ def train_random_forest(train_data,
     x = train_data.drop(columns=[label_column]).values
     y = train_data.loc[:, label_column].values
 
-    # Todo
-    return
+    if config is None:
+        config = {'criterion': 'gini',
+                  'splitter': 'best',
+                  'max_depth': None,
+                  'min_samples_split': 2,
+                  'min_samples_leaf': 1,
+                  'min_weight_fraction_leaf': 0,
+                  'max_features': None,
+                  'random_state': None,
+                  'max_leaf_nodes': None,
+                  'min_impurity_decrease': 0,
+                  'class_weight': None,
+                  'ccp_alpha': 0,
+                  # Parameters specific to random forest classifier
+                  'n_estimators': 100,
+                  'bootstrap': True,
+                  'oob_score': True,
+                  'n_jobs': None,
+                  'warm_start': False,
+                  'max_samples': None}
+
+    model = RandomForestClassifier(criterion=config['criterion'],
+                                   max_depth=config['max_depth'],
+                                   min_samples_split=config['min_samples_split'],
+                                   min_samples_leaf=config['min_samples_leaf'],
+                                   min_weight_fraction_leaf=config['min_weight_fraction_leaf'],
+                                   max_features=config['max_features'],
+                                   random_state=config['random_state'],
+                                   max_leaf_nodes=config['max_leaf_nodes'],
+                                   min_impurity_decrease=config['min_impurity_decrease'],
+                                   class_weight=config['class_weight'],
+                                   ccp_alpha=config['ccp_alpha'],
+                                   # Parameters specific to random forest classifier
+                                   n_estimators=config['n_estimators'],
+                                   bootstrap=config['bootstrap'],
+                                   oob_score=config['oob_score'],
+                                   n_jobs=config['n_jobs'],
+                                   warm_start=config['warm_start'],
+                                   max_samples=config['max_samples'])
+
+    model.fit(X=x, y=y)
+
+    if verbosity:
+        print(f"The feature importances according to the '{config['splitter']}' splitting rule are:")
+        print(model.feature_importances_)
+        if model.oob_score:
+            print(f"The out of bag error of the random forest classifier is {model.oob_score_}.")
+
+    if test:
+        x_test = test_data.drop(columns=[label_column]).values
+        y_test = test_data.loc[:, label_column].values
+
+        pred = model.predict(X=x_test)
+
+        evaluate_class_predictions(prediction=pred, ground_truth=y_test, verbosity=True)
+
+    return model
 
 
 if __name__ == '__main__':
@@ -89,6 +144,13 @@ if __name__ == '__main__':
     testd = testd.drop(columns=['quality'])
 
     train_dt_classifier(train_data=traind,
+                        label_column='label',
+                        config=None,
+                        test=True,
+                        test_data=testd,
+                        verbosity=True)
+
+    train_random_forest(train_data=traind,
                         label_column='label',
                         config=None,
                         test=True,
