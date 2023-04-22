@@ -6,6 +6,7 @@ from sklearn.svm import SVC
 from sklearn.model_selection import GridSearchCV
 from load_data import data_pipeline_redwine
 from evaluation import evaluate_class_predictions
+from auxiliary_functions import parameter_tuning_wrapper
 
 
 def train_svm_model(train_data: pd.DataFrame,
@@ -70,17 +71,9 @@ def train_svm_model(train_data: pd.DataFrame,
     return model
 
 
-def parameter_tuning_svm(train_data: pd.DataFrame,
-                         label_column: str = 'label',
-                         verbosity: bool = False,
-                         save: bool = False,
-                         filename: str = '../configurations/best_svm_config.pickle') -> dict:
+def run_parameter_tuning_svm(train_data: pd.DataFrame,
+                             label_column: str = 'label') -> dict:
 
-    x = traind.drop(columns=label_column).values
-    y = train_data.loc[:, label_column].values
-
-    # scores = ['precision', 'recall']
-    scores = 'accuracy'
     config = [
         {'C': [0.5, 1, 2, 10],
          'kernel': ['linear', 'poly', 'rbf', 'sigmoid'],
@@ -94,21 +87,16 @@ def parameter_tuning_svm(train_data: pd.DataFrame,
          'class_weight': [None, 'balanced']}
     ]
 
-    grid_search = GridSearchCV(estimator=SVC(), param_grid=config, scoring=scores, cv=5, verbose=1)
-    # works with k-fold cross validation on the training set -> default is cv=5
-    grid_search.fit(x, y)
+    best_config = parameter_tuning_wrapper(classifier=SVC(),
+                                           param_search_space=config,
+                                           train_data=train_data,
+                                           label_column=label_column,
+                                           verbosity=True,
+                                           save=True,
+                                           filename='../configurations/best_svm_config.pickle')
 
-    if verbosity:
-        print("The best found parameter configuration is:")
-        print(grid_search.best_params_)
+    return best_config
 
-    best_param = grid_search.best_params_
-
-    if save:
-        with open(filename, 'wb') as f:
-            pickle.dump(best_param, f, protocol=pickle.HIGHEST_PROTOCOL)
-
-    return best_param
 
 
 if __name__ == '__main__':
@@ -117,7 +105,7 @@ if __name__ == '__main__':
     traind = traind.drop(columns=['quality'])
     testd = testd.drop(columns=['quality'])
     # Perform parameter tuning
-    # best_config = parameter_tuning_svm(train_data=traind)
+    # best_param = run_parameter_tuning_svm(train_data=traind, label_column='label')
 
     # Train model with best found configuration
     with open('../configurations/best_svm_config.pickle', 'rb') as f:
