@@ -276,3 +276,6 @@ if __name__ == '__main__':
                             test=True,
                             test_data=testd,
                             verbosity=True)
+
+        config1 = {'bootstrap': True, 'ccp_alpha': 0, 'class_weight': None, 'criterion': 'log_loss', 'max_depth': 1000, 'max_features': None, 'max_leaf_nodes': None, 'max_samples': None, 'min_impurity_decrease': 0, 'min_samples_leaf': 1, 'min_samples_split': 8, 'min_weight_fraction_leaf': 0, 'n_estimators': 100, 'n_jobs': None, 'oob_score': True, 'random_state': None, 'warm_start': False}
+        config2 = {'ccp_alpha': 0, 'class_weight': None, 'criterion': 'entropy', 'max_depth': 1000, 'max_features': None, 'max_leaf_nodes': None, 'min_impurity_decrease': 0, 'min_samples_leaf': 1, 'min_samples_split': 2, 'min_weight_fraction_leaf': 0, 'random_state': None, 'splitter': 'random'}
