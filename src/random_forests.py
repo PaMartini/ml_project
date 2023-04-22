@@ -1,6 +1,6 @@
 
 from typing import *
-import numpy as np
+import pickle
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.tree import DecisionTreeClassifier
@@ -9,6 +9,7 @@ from sklearn import tree
 
 from load_data import data_pipeline_redwine
 from evaluation import evaluate_class_predictions
+from auxiliary_functions import parameter_tuning_wrapper
 
 
 def train_dt_classifier(train_data,
@@ -137,22 +138,102 @@ def train_random_forest(train_data,
     return model
 
 
+def run_parameter_tuning_dt(train_data: pd.DataFrame,
+                             label_column: str = 'label') -> dict:
+
+    config = [
+        {'criterion': ['gini', 'entropy', 'log_loss'],
+         'splitter': ['best', 'random'],
+         'max_depth': [5, 7, 10, 12, 1000],
+         'min_samples_split': [2, 4, 8],
+         'min_samples_leaf': [1, 4, 8, 10],
+         'min_weight_fraction_leaf': [0],
+         'max_features': [None],
+         'random_state': [None],
+         'max_leaf_nodes': [None, 15, 20, 30],
+         'min_impurity_decrease': [0],
+         'class_weight': [None],
+         'ccp_alpha': [0]}
+    ]
+
+    best_config = parameter_tuning_wrapper(classifier=DecisionTreeClassifier(),
+                                           param_search_space=config,
+                                           train_data=train_data,
+                                           label_column=label_column,
+                                           verbosity=True,
+                                           save=True,
+                                           filename='../configurations/best_dt_config.pickle')
+
+    return best_config
+
+
+def run_parameter_tuning_rf(train_data: pd.DataFrame,
+                            label_column: str = 'label') -> dict:
+
+    config = [
+        {'criterion': ['gini', 'entropy', 'log_loss'],
+         'max_depth': [5, 7, 10, 12, 1000],
+         'min_samples_split': [2, 4, 8],
+         'min_samples_leaf': [1, 4, 8, 10],
+         'min_weight_fraction_leaf': [0],
+         'max_features': [None],
+         'random_state': [None],
+         'max_leaf_nodes': [None, 15, 20, 30],
+         'min_impurity_decrease': [0],
+         'class_weight': [None],
+         'ccp_alpha': [0],
+         # Parameters specific to random forest classifier
+         'n_estimators': [50, 100, 200],
+         'bootstrap': [True],
+         'oob_score': [True],
+         'n_jobs': [None],
+         'warm_start': [False],
+         'max_samples': [None]
+         }
+    ]
+
+    best_config = parameter_tuning_wrapper(classifier=RandomForestClassifier(),
+                                           param_search_space=config,
+                                           train_data=train_data,
+                                           label_column=label_column,
+                                           verbosity=True,
+                                           save=True,
+                                           filename='../configurations/best_rf_config.pickle')
+
+    return best_config
+
+
+
+
 if __name__ == '__main__':
     traind, testd = data_pipeline_redwine()
     # Delete quality columns in data frames:
     traind = traind.drop(columns=['quality'])
     testd = testd.drop(columns=['quality'])
 
+    # run_parameter_tuning_dt(train_data=traind, label_column='label')
+    # run_parameter_tuning_rf(train_data=traind, label_column='label')
+
+    # Train model with best found configuration
+    with open('../configurations/best_dt_config.pickle', 'rb') as f:
+        best_dt_param = pickle.load(f)
+
+    with open('../configurations/best_rf_config.pickle', 'rb') as f:
+        best_rf_param = pickle.load(f)
+
+    print(best_dt_param)
+    print(best_rf_param)
+
     train_dt_classifier(train_data=traind,
                         label_column='label',
-                        config=None,
+                        config=best_dt_param,
                         test=True,
                         test_data=testd,
-                        verbosity=True)
+                        verbosity=False)
 
     train_random_forest(train_data=traind,
                         label_column='label',
-                        config=None,
+                        config=best_rf_param,
                         test=True,
                         test_data=testd,
                         verbosity=True)
