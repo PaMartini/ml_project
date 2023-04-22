@@ -74,7 +74,7 @@ def parameter_tuning_svm(train_data: pd.DataFrame,
                          label_column: str = 'label',
                          verbosity: bool = False,
                          save: bool = False,
-                         filename: str = 'best_svm_config.pickle') -> dict:
+                         filename: str = '../configurations/best_svm_config.pickle') -> dict:
 
     x = traind.drop(columns=label_column).values
     y = train_data.loc[:, label_column].values
@@ -117,17 +117,15 @@ if __name__ == '__main__':
     traind = traind.drop(columns=['quality'])
     testd = testd.drop(columns=['quality'])
     # Perform parameter tuning
-    best_config = parameter_tuning_svm(train_data=traind)
-    # Train model
+    # best_config = parameter_tuning_svm(train_data=traind)
+
+    # Train model with best found configuration
+    with open('../configurations/best_svm_config.pickle', 'rb') as f:
+        best_param = pickle.load(f)
     train_svm_model(train_data=traind,
                     label_column='label',
-                    config=None,
+                    config=best_param,
                     test=True,
                     test_data=testd,
                     verbosity=True)
-
-    #best_param = {}
-
-    #with open('best_svm_config.pickle', 'wb') as f:
-       # pickle.dump(best_param, f, protocol=pickle.HIGHEST_PROTOCOL)
 
