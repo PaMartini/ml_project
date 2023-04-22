@@ -32,12 +32,11 @@ def train_gaussian_naive_bayes(train_data,
         x_test = test_data.drop(columns=[label_column]).values
         y_test = test_data.loc[:, label_column].values
 
+        labels = np.union1d(y, y_test)
+
         pred = model.predict(X=x_test)
 
-        if np.unique(y).shape[0] <= 2:
-            evaluate_class_predictions(prediction=pred, ground_truth=y_test, verbosity=True)
-        else:
-            evaluate_class_predictions(prediction=pred, ground_truth=y_test, multiclass=True, verbosity=True)
+        evaluate_class_predictions(prediction=pred, ground_truth=y_test, labels=labels, verbosity=True)
 
     return model
 
