@@ -1,8 +1,9 @@
-
+import pickle
 from typing import *
 
 import pandas as pd
 from sklearn.svm import SVC
+from sklearn.model_selection import GridSearchCV
 from load_data import data_pipeline_redwine
 from evaluation import evaluate_class_predictions
 
@@ -26,8 +27,12 @@ def train_svm_model(train_data: pd.DataFrame,
     x = train_data.drop(columns=[label_column]).values
     y = train_data.loc[:, label_column].values
     if config is None:
+        # Default parameters
         config = {'C': 1,
                   'kernel': 'linear',
+                  'degree': 5,
+                  'gamma': 'scale',
+                  'coef0': 0,
                   'shrinking': False,
                   'probability': False,
                   'tol': 1e-3,
@@ -66,19 +71,63 @@ def train_svm_model(train_data: pd.DataFrame,
 
 
 def parameter_tuning_svm(train_data: pd.DataFrame,
-                         val_data: pd.DataFrame,
                          label_column: str = 'label',
-                         verbosity: bool = False) -> dict:
-    pass
+                         verbosity: bool = False,
+                         save: bool = False,
+                         filename: str = 'best_svm_config.pickle') -> dict:
 
+    x = traind.drop(columns=label_column).values
+    y = train_data.loc[:, label_column].values
+
+    # scores = ['precision', 'recall']
+    scores = 'accuracy'
+    config = [
+        {'C': [0.5, 1, 2, 10],
+         'kernel': ['linear', 'poly', 'rbf', 'sigmoid'],
+         'degree': [3, 4, 6, 10],  # Degree of the polynomial kernel function.
+         'gamma': ['scale', 'auto'],  # Kernel coefficient for ‘rbf’, ‘poly’ and ‘sigmoid’.
+         'coef0': [0, 0.1, 1],  # Independent term in kernel function. It is only significant in ‘poly’ and ‘sigmoid’.
+         'shrinking': [True, False],  # Whether to use the shrinking heuristic.
+         'probability': [False],
+         'tol': [0.001, 0.0001],  # Tolerance for stopping criterion.
+         'max_iter': [-1],
+         'class_weight': [None, 'balanced']}
+    ]
+
+    grid_search = GridSearchCV(estimator=SVC(), param_grid=config, scoring=scores, cv=5, verbose=1)
+    # works with k-fold cross validation on the training set -> default is cv=5
+    grid_search.fit(x, y)
+
+    if verbosity:
+        print("The best found parameter configuration is:")
+        print(grid_search.best_params_)
+
+    best_param = grid_search.best_params_
+
+    if save:
+        with open(filename, 'wb') as f:
+            pickle.dump(best_param, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+    return best_param
 
 
 if __name__ == '__main__':
-    traind, vald, testd = data_pipeline_redwine(val_and_test=True)
+    traind, testd = data_pipeline_redwine(val_and_test=False)
     # Delete quality columns in data frames:
     traind = traind.drop(columns=['quality'])
-    vald = vald.drop(columns=['quality'])
     testd = testd.drop(columns=['quality'])
+    # Perform parameter tuning
+    best_config = parameter_tuning_svm(train_data=traind)
     # Train model
-    train_svm_model(train_data=traind, label_column='label', test=True, test_data=testd, verbosity=True)
+    train_svm_model(train_data=traind,
+                    label_column='label',
+                    config=None,
+                    test=True,
+                    test_data=testd,
+                    verbosity=True)
+
+    #best_param = {}
+
+    #with open('best_svm_config.pickle', 'wb') as f:
+       # pickle.dump(best_param, f, protocol=pickle.HIGHEST_PROTOCOL)
 
