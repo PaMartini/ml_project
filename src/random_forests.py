@@ -125,7 +125,7 @@ def train_random_forest(train_data,
     model.fit(X=x, y=y)
 
     if verbosity:
-        print(f"The feature importances according to the '{config['splitter']}' splitting rule are:")
+        print(f"The feature importances according to the '{config['criterion']}' splitting rule are:")
         print(model.feature_importances_)
         if model.oob_score:
             print(f"The out of bag error of the random forest classifier is {model.oob_score_}.")
@@ -134,12 +134,11 @@ def train_random_forest(train_data,
         x_test = test_data.drop(columns=[label_column]).values
         y_test = test_data.loc[:, label_column].values
 
+        labels = np.union1d(y, y_test)
+
         pred = model.predict(X=x_test)
 
-        if np.unique(y).shape[0] <= 2:
-            evaluate_class_predictions(prediction=pred, ground_truth=y_test, verbosity=True)
-        else:
-            evaluate_class_predictions(prediction=pred, ground_truth=y_test, multiclass=True, verbosity=True)
+        evaluate_class_predictions(prediction=pred, ground_truth=y_test, labels=labels, verbosity=True)
 
     return model
 
@@ -214,8 +213,8 @@ if __name__ == '__main__':
     if not multiclass:
         traind, testd = data_pipeline_redwine()
         # Delete quality columns in data frames:
-        traind = traind.drop(columns=['label'])
-        testd = testd.drop(columns=['label'])
+        traind = traind.drop(columns=['quality'])
+        testd = testd.drop(columns=['quality'])
 
         # run_parameter_tuning_dt(train_data=traind, label_column='label')
         # run_parameter_tuning_rf(train_data=traind, label_column='label')
@@ -231,14 +230,14 @@ if __name__ == '__main__':
         print(best_rf_param)
 
         train_dt_classifier(train_data=traind,
-                            label_column='quality',
+                            label_column='label',
                             config=best_dt_param,
                             test=True,
                             test_data=testd,
                             verbosity=False)
 
         train_random_forest(train_data=traind,
-                            label_column='quality',
+                            label_column='label',
                             config=best_rf_param,
                             test=True,
                             test_data=testd,
