@@ -207,37 +207,70 @@ def run_parameter_tuning_rf(train_data: pd.DataFrame,
     return best_config
 
 
-
-
 if __name__ == '__main__':
-    traind, testd = data_pipeline_redwine()
-    # Delete quality columns in data frames:
-    traind = traind.drop(columns=['quality'])
-    testd = testd.drop(columns=['quality'])
+    multiclass = False
+    if not multiclass:
+        traind, testd = data_pipeline_redwine()
+        # Delete quality columns in data frames:
+        traind = traind.drop(columns=['label'])
+        testd = testd.drop(columns=['label'])
 
-    # run_parameter_tuning_dt(train_data=traind, label_column='label')
-    # run_parameter_tuning_rf(train_data=traind, label_column='label')
+        # run_parameter_tuning_dt(train_data=traind, label_column='label')
+        # run_parameter_tuning_rf(train_data=traind, label_column='label')
 
-    # Train model with best found configuration
-    with open('../configurations/best_dt_config.pickle', 'rb') as f:
-        best_dt_param = pickle.load(f)
+        # Train model with best found configuration
+        with open('../configurations/best_dt_config.pickle', 'rb') as f:
+            best_dt_param = pickle.load(f)
 
-    with open('../configurations/best_rf_config.pickle', 'rb') as f:
-        best_rf_param = pickle.load(f)
+        with open('../configurations/best_rf_config.pickle', 'rb') as f:
+            best_rf_param = pickle.load(f)
 
-    print(best_dt_param)
-    print(best_rf_param)
+        print(best_dt_param)
+        print(best_rf_param)
 
-    train_dt_classifier(train_data=traind,
-                        label_column='label',
-                        config=best_dt_param,
-                        test=True,
-                        test_data=testd,
-                        verbosity=False)
+        train_dt_classifier(train_data=traind,
+                            label_column='quality',
+                            config=best_dt_param,
+                            test=True,
+                            test_data=testd,
+                            verbosity=False)
 
-    train_random_forest(train_data=traind,
-                        label_column='label',
-                        config=best_rf_param,
-                        test=True,
-                        test_data=testd,
-                        verbosity=True)
+        train_random_forest(train_data=traind,
+                            label_column='quality',
+                            config=best_rf_param,
+                            test=True,
+                            test_data=testd,
+                            verbosity=True)
+
+    else:
+        traind, testd = data_pipeline_redwine()
+        # Delete quality columns in data frames:
+        traind = traind.drop(columns=['label'])
+        testd = testd.drop(columns=['label'])
+
+        # run_parameter_tuning_dt(train_data=traind, label_column='label')
+        # run_parameter_tuning_rf(train_data=traind, label_column='label')
+
+        # Train model with best found configuration
+        with open('../configurations/best_dt_config.pickle', 'rb') as f:
+            best_dt_param = pickle.load(f)
+
+        with open('../configurations/best_rf_config.pickle', 'rb') as f:
+            best_rf_param = pickle.load(f)
+
+        print(best_dt_param)
+        print(best_rf_param)
+
+        train_dt_classifier(train_data=traind,
+                            label_column='quality',
+                            config=best_dt_param,
+                            test=True,
+                            test_data=testd,
+                            verbosity=False)
+
+        train_random_forest(train_data=traind,
+                            label_column='quality',
+                            config=best_rf_param,
+                            test=True,
+                            test_data=testd,
+                            verbosity=True)
