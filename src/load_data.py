@@ -182,34 +182,62 @@ def apply_fct_to_data(data: pd.DataFrame,
 
 
 def preprocess_wine(data: pd.DataFrame,
+                    shuffle: bool = False,
+                    preserve_class_dist: bool = False,
                     val_and_test: bool = False,
                     normalize: bool = True,
                     pca_dim: int = -1,
+                    labelling: str = 'bmg',
                     verbosity: bool = False) -> Tuple[pd.DataFrame, ...]:
     """
     Function for performing the train, val, test split and preprocessing the wine data set.
     :param data: Dataframe with wine data.
+    :param shuffle: Whether the data is shuffled before the train test (validation) split.
+    :param preserve_class_dist: Whether to approximately preserve the class distribution in the data
+    when performing the split, or not.
     :param val_and_test: Whether to split the data into a train, val and test or a train and test set.
     :param normalize: Whether to normalize the data, or not.
     :param pca_dim: Principal components of PCA dimensionality reduction. Default -1 corresponds to no reduction.
+    :param labelling: Sets how to label the data.
     :param verbosity: Whether to print information on the process, or not.
     :return: The preprocessed and split data sets.
     """
+    assert labelling in {'bmg', 'binary', 'quality'}, \
+        "Parameter 'labelling must be one of the following 'bmg', 'binary, 'quality'."
 
-    # Annotate with binary labels: 0 = bad (rating <= 5), 1 = good (rating > 5)
-    quality_ratings_bool = (np.array(data.loc[:, 'quality']) > 5).astype(float)
-    data["label"] = quality_ratings_bool
+    if labelling == 'binary':
+        # Annotate with binary labels: 0 = bad (rating <= 5), 1 = good (rating > 5)
+        quality_ratings_bool = (data.loc[:, 'quality'].values > 5).astype(float)
+        data["label"] = quality_ratings_bool
+    elif labelling == 'quality':
+        data["label"] = data.loc[:, 'quality'].values
+    elif labelling == 'bmg':
+        quality = data.loc[:, 'quality'].values
+        bad_labels = (quality <= 4).astype(float)
+        medium_labels = np.logical_and((5 <= quality), (quality <= 7)).astype(float) * 2
+        good_labels = (8 <= quality).astype(float) * 3
+        bad_medium_good = bad_labels + medium_labels + good_labels
+        data['label'] = bad_medium_good
 
     if verbosity:
         print(data.head())
-        print(f"There are {data.loc[:, 'label'].sum()} out of "
-              f"{data.shape[0]} samples with good quality.")
+        if labelling == 'binary':
+            print(f"There are {data.loc[:, 'label'].sum()} out of "
+                  f"{data.shape[0]} samples with good quality.")
+        if labelling == 'quality':
+            print(f"There are {data.loc[:, 'label'].values.shape[0]} samples in total.")
+            for i in np.unique(data.loc[:, 'label'].values):
+                print(f"There are {(data.loc[:, 'label'].values == i).sum()} samples with label {i}.")
+        if labelling == 'bmg':
+            print("Label 1=bad, 2= medium, 3=good quality.")
+            for i in np.unique(data.loc[:, 'label'].values):
+                print(f"There are {(data.loc[:, 'label'].values == i).sum()} samples with label {i}.")
 
     if val_and_test:
         traind, vald, testd = perform_train_val_test_split(data=data,
                                                            split=(0.6, 0.2, 0.2),
-                                                           shuffle=True,
-                                                           preserve_class_dist=True)
+                                                           shuffle=shuffle,
+                                                           preserve_class_dist=preserve_class_dist)
 
         if normalize:
             traind, means, stdev = normalize_data(data=traind, label_columns=['quality', 'label'])
@@ -243,8 +271,8 @@ def preprocess_wine(data: pd.DataFrame,
     else:
         traind, testd = perform_train_val_test_split(data=data,
                                                      split=(0.8, 0, 0.2),
-                                                     shuffle=True,
-                                                     preserve_class_dist=True)
+                                                     shuffle=shuffle,
+                                                     preserve_class_dist=preserve_class_dist)
         if normalize:
             traind, means, stdev = normalize_data(data=traind, label_columns=['quality', 'label'])
             # Apply normalization to test data using means, stdev from train data
@@ -266,6 +294,8 @@ def preprocess_wine(data: pd.DataFrame,
                 print("The percentage of variance explained by each of the selected components is:")
                 print(train_pca.explained_variance_ratio_)
 
+        # if over_sample:
+            # Todo
         return traind, testd
 
 
@@ -275,13 +305,26 @@ def data_pipeline_redwine(val_and_test: bool = False) -> Tuple[pd.DataFrame, ...
     :return: Redwine data set, preprocessed and split into training and test set.
     """
     fn_red = "../data/wine_data/winequality-red.csv"
-    data_red = load_wine(filename=fn_red, verbosity=False)
-    return preprocess_wine(data=data_red, val_and_test=val_and_test, normalize=True, pca_dim=-1, verbosity=True)
+    data_red = load_wine(filename=fn_red, verbosity=True)
+    return preprocess_wine(data=data_red, val_and_test=val_and_test, normalize=True,
+                           pca_dim=-1, labelling='bmg', verbosity=False)
+
+
+def data_pipeline_whitewine(val_and_test: bool = False) -> Tuple[pd.DataFrame, ...]:
+    """
+    Example workflow for loading and preprocessing of whitewine data set.
+    :return: Redwine data set, preprocessed and split into training and test set.
+    """
+    fn_white = "../data/wine_data/winequality-white.csv"
+    data_white = load_wine(filename=fn_white, verbosity=True)
+    return preprocess_wine(data=data_white, val_and_test=val_and_test, normalize=True,
+                           pca_dim=-1, labelling='bmg', verbosity=False)
 
 
 if __name__ == '__main__':
-    out = data_pipeline_redwine(val_and_test=False)
-    print(out)
+    out_red = data_pipeline_redwine(val_and_test=False)
+    out_white = data_pipeline_whitewine(val_and_test=False)
+
 
     # fn_white = "../data/wine_data/winequality-white.csv"
     # data_white = load_wine(filename=fn_white, verbosity=True)
