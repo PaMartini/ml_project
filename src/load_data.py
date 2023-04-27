@@ -4,6 +4,8 @@ import numpy as np
 import sklearn as sk
 import sklearn.model_selection
 from sklearn.decomposition import PCA
+from imblearn.over_sampling import RandomOverSampler
+from imblearn.over_sampling import SMOTE
 import matplotlib.pyplot as plt
 from typing import *
 
@@ -181,10 +183,32 @@ def apply_fct_to_data(data: pd.DataFrame,
     return final_df
 
 
+def calc_oversampling_strategy(y: np.ndarray) -> dict:
+    """
+    Function for computing a sampling strategy dictionary.
+    Try to equalize number of samples per class, but do not go over 2 times the original number of class samples.
+    :param y: Label vector.
+    :return: Dictionary with classes as keys and desired number of samples for each class as values.
+    """
+    unique_labels = np.unique(y)
+    num_class_dict = {}
+    for l in unique_labels:
+        num_class_dict[l] = (y == l).sum()
+    majority_class = max(num_class_dict, key=num_class_dict.get)
+    strategy_dict = {}
+    for l in unique_labels:
+        if num_class_dict[l] * 2 <= num_class_dict[majority_class]:
+            strategy_dict[l] = num_class_dict[l] * 2
+        else:
+            strategy_dict[l] = num_class_dict[majority_class]
+    return strategy_dict
+
+
 def preprocess_wine(data: pd.DataFrame,
                     shuffle: bool = False,
                     preserve_class_dist: bool = False,
                     val_and_test: bool = False,
+                    over_sample: str = None,
                     normalize: bool = True,
                     pca_dim: int = -1,
                     labelling: str = 'bmg',
@@ -196,6 +220,7 @@ def preprocess_wine(data: pd.DataFrame,
     :param preserve_class_dist: Whether to approximately preserve the class distribution in the data
     when performing the split, or not.
     :param val_and_test: Whether to split the data into a train, val and test or a train and test set.
+    :param over_sample: If 'labelling == 'bmg'' whether to resample the minority classes or not.
     :param normalize: Whether to normalize the data, or not.
     :param pca_dim: Principal components of PCA dimensionality reduction. Default -1 corresponds to no reduction.
     :param labelling: Sets how to label the data.
@@ -204,6 +229,7 @@ def preprocess_wine(data: pd.DataFrame,
     """
     assert labelling in {'bmg', 'binary', 'quality'}, \
         "Parameter 'labelling must be one of the following 'bmg', 'binary, 'quality'."
+    assert over_sample in {'random', 'smote', None}, "Parameter 'over_sample' must be 'random', 'smote' or None."
 
     if labelling == 'binary':
         # Annotate with binary labels: 0 = bad (rating <= 5), 1 = good (rating > 5)
@@ -294,8 +320,36 @@ def preprocess_wine(data: pd.DataFrame,
                 print("The percentage of variance explained by each of the selected components is:")
                 print(train_pca.explained_variance_ratio_)
 
-        # if over_sample:
-            # Todo
+        if labelling == 'bmg':
+            if over_sample is not None:
+                num_bad = (traind.loc[:, 'label'].values == 1).sum()
+                num_med = (traind.loc[:, 'label'].values == 2).sum()
+                num_good = (traind.loc[:, 'label'].values == 3).sum()
+                num_bad_te = (testd.loc[:, 'label'].values == 1).sum()
+                num_med_te = (testd.loc[:, 'label'].values == 2).sum()
+                num_good_te = (testd.loc[:, 'label'].values == 3).sum()
+                if verbosity:
+                    print(f"Before oversampling in the training set there "
+                          f"are {num_bad} bad, {num_med} medium, {num_good} good samples. ")
+                    print(f"Before oversampling in the test set there "
+                          f"are {num_bad_te} bad, {num_med_te} medium, {num_good_te} good samples. ")
+                if over_sample == 'random':
+                    ros = RandomOverSampler(sampling_strategy=calc_oversampling_strategy,
+                                            shrinkage=None)
+                    traind, _ = ros.fit_resample(X=traind, y=traind.loc[:, 'label'].values)
+
+                elif over_sample == 'smote':
+                    smote = SMOTE(sampling_strategy=calc_oversampling_strategy,
+                                  k_neighbors=5)
+                    traind, _ = smote.fit_resample(X=traind, y=traind.loc[:, 'label'].values)
+
+                if verbosity:
+                    num_bad = (traind.loc[:, 'label'].values == 1).sum()
+                    num_med = (traind.loc[:, 'label'].values == 2).sum()
+                    num_good = (traind.loc[:, 'label'].values == 3).sum()
+                    print(f"After oversampling in the training set there "
+                          f"are {num_bad} bad, {num_med} medium, {num_good} good samples. ")
+
         return traind, testd
 
 
@@ -305,9 +359,16 @@ def data_pipeline_redwine(val_and_test: bool = False) -> Tuple[pd.DataFrame, ...
     :return: Redwine data set, preprocessed and split into training and test set.
     """
     fn_red = "../data/wine_data/winequality-red.csv"
-    data_red = load_wine(filename=fn_red, verbosity=True)
-    return preprocess_wine(data=data_red, val_and_test=val_and_test, normalize=True,
-                           pca_dim=-1, labelling='bmg', verbosity=False)
+    data_red = load_wine(filename=fn_red, verbosity=False)
+    return preprocess_wine(data=data_red,
+                           shuffle=True,
+                           preserve_class_dist=True,
+                           val_and_test=val_and_test,
+                           over_sample='smote',
+                           normalize=True,
+                           pca_dim=-1,
+                           labelling='bmg',
+                           verbosity=True)
 
 
 def data_pipeline_whitewine(val_and_test: bool = False) -> Tuple[pd.DataFrame, ...]:
@@ -316,9 +377,16 @@ def data_pipeline_whitewine(val_and_test: bool = False) -> Tuple[pd.DataFrame, .
     :return: Redwine data set, preprocessed and split into training and test set.
     """
     fn_white = "../data/wine_data/winequality-white.csv"
-    data_white = load_wine(filename=fn_white, verbosity=True)
-    return preprocess_wine(data=data_white, val_and_test=val_and_test, normalize=True,
-                           pca_dim=-1, labelling='bmg', verbosity=False)
+    data_white = load_wine(filename=fn_white, verbosity=False)
+    return preprocess_wine(data=data_white,
+                           shuffle=True,
+                           preserve_class_dist=True,
+                           val_and_test=val_and_test,
+                           over_sample='smote',
+                           normalize=True,
+                           pca_dim=-1,
+                           labelling='bmg',
+                           verbosity=True)
 
 
 if __name__ == '__main__':
