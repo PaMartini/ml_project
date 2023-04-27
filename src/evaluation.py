@@ -32,6 +32,8 @@ def evaluate_class_predictions(prediction: np.ndarray,
                            labels=labels, average='micro')
 
     if verbosity:
+        for l in labels:
+            print(f"Predicted label {l} for {(prediction == l).sum()} samples, {(ground_truth == l).sum()} are in gt.")
         print(f"## Accuracy: {accuracy}")
         print(f"## Precision: {precision}")
         print(f"## Recall: {recall}")
