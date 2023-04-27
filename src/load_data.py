@@ -9,6 +9,8 @@ from imblearn.over_sampling import SMOTE
 import matplotlib.pyplot as plt
 from typing import *
 
+from evaluation import evaluate_class_predictions
+
 
 def load_comma_sep_csv(filename: str, verbosity: bool = False) -> pd.DataFrame:
     data = pd.read_csv(filename, sep=",")
@@ -256,8 +258,9 @@ def preprocess_wine(data: pd.DataFrame,
                 print(f"There are {(data.loc[:, 'label'].values == i).sum()} samples with label {i}.")
         if labelling == 'bmg':
             print("Label 1=bad, 2= medium, 3=good quality.")
+            print("In the whole dataset ...")
             for i in np.unique(data.loc[:, 'label'].values):
-                print(f"There are {(data.loc[:, 'label'].values == i).sum()} samples with label {i}.")
+                print(f"there are {(data.loc[:, 'label'].values == i).sum()} samples with label {i}.")
 
     if val_and_test:
         traind, vald, testd = perform_train_val_test_split(data=data,
@@ -333,6 +336,14 @@ def preprocess_wine(data: pd.DataFrame,
                           f"are {num_bad} bad, {num_med} medium, {num_good} good samples. ")
                     print(f"Before oversampling in the test set there "
                           f"are {num_bad_te} bad, {num_med_te} medium, {num_good_te} good samples. ")
+                    baseline_pred = np.ones(testd.loc[:, 'label'].values.shape[0]) * 2
+                    print("The baseline metrics given an all majority prediction are:")
+                    b_acc, b_perc, b_rec, b_f1 = evaluate_class_predictions(
+                        prediction=baseline_pred,
+                        ground_truth=testd.loc[:, 'label'].values,
+                        labels=np.unique(traind.loc[:, 'label'].values),
+                        verbosity=True)
+
                 if over_sample == 'random':
                     ros = RandomOverSampler(sampling_strategy=calc_oversampling_strategy,
                                             shrinkage=None)
