@@ -241,9 +241,9 @@ def preprocess_wine(data: pd.DataFrame,
         data["label"] = data.loc[:, 'quality'].values
     elif labelling == 'bmg':
         quality = data.loc[:, 'quality'].values
-        bad_labels = (quality <= 4).astype(float)
-        medium_labels = np.logical_and((5 <= quality), (quality <= 7)).astype(float) * 2
-        good_labels = (8 <= quality).astype(float) * 3
+        bad_labels = (quality <= 4).astype(float) * 0
+        medium_labels = np.logical_and((5 <= quality), (quality <= 7)).astype(float) * 1
+        good_labels = (8 <= quality).astype(float) * 2
         bad_medium_good = bad_labels + medium_labels + good_labels
         data['label'] = bad_medium_good
 
@@ -257,7 +257,7 @@ def preprocess_wine(data: pd.DataFrame,
             for i in np.unique(data.loc[:, 'label'].values):
                 print(f"There are {(data.loc[:, 'label'].values == i).sum()} samples with label {i}.")
         if labelling == 'bmg':
-            print("Label 1=bad, 2= medium, 3=good quality.")
+            print("Label 0=bad, 1= medium, 2=good quality.")
             print("In the whole dataset ...")
             for i in np.unique(data.loc[:, 'label'].values):
                 print(f"there are {(data.loc[:, 'label'].values == i).sum()} samples with label {i}.")
@@ -325,12 +325,12 @@ def preprocess_wine(data: pd.DataFrame,
 
         if labelling == 'bmg':
             if over_sample is not None:
-                num_bad = (traind.loc[:, 'label'].values == 1).sum()
-                num_med = (traind.loc[:, 'label'].values == 2).sum()
-                num_good = (traind.loc[:, 'label'].values == 3).sum()
-                num_bad_te = (testd.loc[:, 'label'].values == 1).sum()
-                num_med_te = (testd.loc[:, 'label'].values == 2).sum()
-                num_good_te = (testd.loc[:, 'label'].values == 3).sum()
+                num_bad = (traind.loc[:, 'label'].values == 0).sum()
+                num_med = (traind.loc[:, 'label'].values == 1).sum()
+                num_good = (traind.loc[:, 'label'].values == 2).sum()
+                num_bad_te = (testd.loc[:, 'label'].values == 0).sum()
+                num_med_te = (testd.loc[:, 'label'].values == 1).sum()
+                num_good_te = (testd.loc[:, 'label'].values == 2).sum()
                 if verbosity:
                     print(f"Before oversampling in the training set there "
                           f"are {num_bad} bad, {num_med} medium, {num_good} good samples. ")
