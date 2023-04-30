@@ -25,11 +25,11 @@ class WineDataset(Dataset):
     def __getitem__(self, index):
         row = self.df.iloc[index].values
         features = row[:-1]
-        # label = row[-1]
+        int_label = row[-1]
         # One hot encoding, assuming label structure is 0,1,2,...
         label = np.zeros(self.num_labels)
         label[int(row[-1])] = 1
-        return features, label
+        return features, label, int_label
 
     def __len__(self):
         return len(self.df)
@@ -144,8 +144,6 @@ def train_loop(train_loader: DataLoader,
         recall = np.zeros(num_epochs)
         f1 = np.zeros(num_epochs)
 
-    flatten = nn.Flatten(start_dim=0, end_dim=-1)
-
     for epoch in range(num_epochs):
         if verbosity:
             print(f"### Starting epoch {epoch + 1} of {num_epochs} ###")
@@ -155,7 +153,6 @@ def train_loop(train_loader: DataLoader,
             y = data[1].to(torch.float32)
             model.train()
             model_out = model(x)
-            # model_out = flatten(model_out)
             optimizer.zero_grad()
             loss = loss_fct(model_out, y)
             loss.backward()
@@ -172,16 +169,17 @@ def train_loop(train_loader: DataLoader,
         for i, data in tqdm(enumerate(val_loader), total=len(val_loader)):
             x = data[0].to(torch.float32)
             y = data[1].to(torch.float32)
+            int_y = np.array(data[2])
             model.eval()
             with torch.no_grad():
                 model_out = model(x)
-                # model_out = flatten(model_out)
                 loss = loss_fct(model_out, y)
                 running_val_loss += loss.item()
 
                 if track_metrics:
-                    preds = np.array((model_out >= 0.5)).astype(float)
-                    acc, pre, rec, f = evaluate_class_predictions(prediction=preds, ground_truth=y,
+                    preds = np.array(torch.argmax(model_out, dim=1).detach())
+
+                    acc, pre, rec, f = evaluate_class_predictions(prediction=preds, ground_truth=int_y,
                                                                   labels=labels, verbosity=False)
                     running_acc += acc
                     running_pre += pre
@@ -214,7 +212,12 @@ def train_loop(train_loader: DataLoader,
     return model, train_losses, val_losses, metrics_dict
 
 
-def run_training(n_epochs: int = 20, plot_losses: bool = False, save_losses: bool = False, plot_save_metrics: bool = False):
+def run_training(n_epochs: int = 20,
+                 test: bool = False,
+                 plot_losses: bool = False,
+                 save_losses: bool = False,
+                 plot_save_metrics: bool = False):
+
     train_loader, val_loader, labels = get_data_loaders_wine_data(val_and_test=False,
                                                                   batch_size=20,
                                                                   label_column='label',
@@ -226,6 +229,7 @@ def run_training(n_epochs: int = 20, plot_losses: bool = False, save_losses: boo
     # Initialize optimizer.
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
     # Initialize loss function
+    # loss_fct = nn.CrossEntropyLoss(weight=torch.tensor([2/5, 1/5, 2/5]), reduction='mean', label_smoothing=0)
     loss_fct = nn.CrossEntropyLoss(reduction='mean', label_smoothing=0)
 
     trained_model, train_losses, val_losses, metrics_dict = train_loop(train_loader=train_loader,
@@ -248,6 +252,22 @@ def run_training(n_epochs: int = 20, plot_losses: bool = False, save_losses: boo
         with open('metrics_dict.pickle', 'wb') as f:
             pickle.dump(metrics_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
         plot_metrics(metrics_dict=metrics_dict)
+
+    if test:
+        val_gt_labels = np.array([])
+        predictions = np.array([])
+        for i, data in tqdm(enumerate(val_loader), total=len(val_loader)):
+            x = data[0].to(torch.float32)
+            # y = data[1].to(torch.float32)
+            int_y = np.array(data[2])
+            model.eval()
+            with torch.no_grad():
+                model_out = trained_model(x)
+                pred = np.array(torch.argmax(model_out, dim=1).detach())
+                predictions = np.hstack((predictions, pred))
+                val_gt_labels = np.hstack((val_gt_labels, int_y))
+        evaluate_class_predictions(prediction=predictions, ground_truth=val_gt_labels, labels=labels, verbosity=True)
+
 
 
 def plot_loss(train_loss: np.ndarray, val_loss: np.ndarray):
@@ -299,7 +319,7 @@ def check_model():
 
 
 if __name__ == '__main__':
-    run_training(n_epochs=15, plot_losses=True, save_losses=False, plot_save_metrics=False)
+    run_training(n_epochs=10, test=True, plot_losses=True, save_losses=False, plot_save_metrics=True)
     # test_model(model_name='model_20230422-181611.pt')
     print('done')
 
