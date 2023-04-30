@@ -19,6 +19,16 @@ def train_dt_classifier(train_data,
                         test: bool = False,
                         test_data: Union[None, pd.DataFrame] = None,
                         verbosity: bool = False) -> DecisionTreeClassifier:
+    """
+    Function for training and testing a decision tree classifier.
+    :param train_data: Dataframe with train data.
+    :param label_column: Name of the column with the labels.
+    :param config: Dictionary with parameters of the decision tree classifier.
+    :param test: Whether to evaluate the trained classifier on the test set or not.
+    :param test_data: Dataframe with test data.
+    :param verbosity: Whether to print information on the trained classifier or not.
+    :return: Trained decision tree classifier.
+    """
 
     x = train_data.drop(columns=[label_column]).values
     y = train_data.loc[:, label_column].values
@@ -78,6 +88,16 @@ def train_random_forest(train_data,
                         test: bool = False,
                         test_data: Union[None, pd.DataFrame] = None,
                         verbosity: bool = False) -> RandomForestClassifier:
+    """
+    Function for training and testing a random forest classifier.
+    :param train_data: Dataframe with train data.
+    :param label_column: Name of the column with the labels.
+    :param config: Dictionary with parameters of the random forest classifier.
+    :param test: Whether to evaluate the trained classifier on the test set or not.
+    :param test_data: Dataframe with test data.
+    :param verbosity: Whether to print information on the trained classifier or not.
+    :return: Trained random forest classifier.
+    """
 
     x = train_data.drop(columns=[label_column]).values
     y = train_data.loc[:, label_column].values

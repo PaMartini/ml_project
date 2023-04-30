@@ -14,6 +14,16 @@ def train_gaussian_naive_bayes(train_data,
                                test: bool = False,
                                test_data: Union[None, pd.DataFrame] = None,
                                verbosity: bool = False) -> GaussianNB:
+    """
+    Function for training and testing a gaussian naive bayes model.
+    :param train_data: Dataframe with train data.
+    :param label_column: Name of the column with the labels.
+    :param config: Dictionary with parameters of naive bayes model.
+    :param test: Whether to evaluate the trained model on the test set or not.
+    :param test_data: Dataframe with test data.
+    :param verbosity: Whether to print information on the trained model or not.
+    :return: Trained naive bayes model.
+    """
 
     x = train_data.drop(columns=[label_column]).values
     y = train_data.loc[:, label_column].values
