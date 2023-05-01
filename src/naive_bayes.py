@@ -1,11 +1,13 @@
 
 from typing import *
+import pickle
 import numpy as np
 import pandas as pd
 from sklearn.naive_bayes import GaussianNB
 
 from evaluation import evaluate_class_predictions
 from load_data import data_pipeline_redwine
+from auxiliary_functions import parameter_tuning_wrapper
 
 
 def train_gaussian_naive_bayes(train_data,
@@ -51,28 +53,42 @@ def train_gaussian_naive_bayes(train_data,
     return model
 
 
+def run_parameter_tuning_nb(train_data: pd.DataFrame,
+                            label_column: str = 'label') -> dict:
+
+    config = [
+        {'priors': [None, np.array([1/3, 1/3, 1/3])],  # Try uniform priors
+         'var_smoothing': [1e-9, 0]}
+    ]
+
+    best_config = parameter_tuning_wrapper(classifier=GaussianNB(),
+                                           param_search_space=config,
+                                           train_data=train_data,
+                                           label_column=label_column,
+                                           verbosity=True,
+                                           save=True,
+                                           filename='../configurations/best_nb_config.pickle')
+
+    return best_config
+
+
 if __name__ == '__main__':
-    multiclass = False
-    if not multiclass:
-        traind, testd = data_pipeline_redwine()
-        # Delete quality columns in data frames:
-        traind = traind.drop(columns=['quality'])
-        testd = testd.drop(columns=['quality'])
-        train_gaussian_naive_bayes(train_data=traind,
-                                   label_column='label',
-                                   config=None,
-                                   test=True,
-                                   test_data=testd,
-                                   verbosity=True)
-    else:
-        traind, testd = data_pipeline_redwine()
-        # Delete label columns in data frames:
-        traind = traind.drop(columns=['label'])
-        testd = testd.drop(columns=['label'])
-        train_gaussian_naive_bayes(train_data=traind,
-                                   label_column='quality',
-                                   config=None,
-                                   test=True,
-                                   test_data=testd,
-                                   verbosity=True)
+    traind, testd = data_pipeline_redwine()
+    # Delete quality columns in data frames:
+    traind = traind.drop(columns=['quality'])
+    testd = testd.drop(columns=['quality'])
+
+    run_parameter_tuning_nb(train_data=traind, label_column='label')
+
+    with open('../configurations/best_nb_config.pickle', 'rb') as f:
+        best_nb_param = pickle.load(f)
+
+    print(best_nb_param)
+
+    train_gaussian_naive_bayes(train_data=traind,
+                               label_column='label',
+                               config=best_nb_param,
+                               test=True,
+                               test_data=testd,
+                               verbosity=True)
 
