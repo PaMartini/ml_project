@@ -101,41 +101,21 @@ def run_parameter_tuning_svm(train_data: pd.DataFrame,
 
 
 if __name__ == '__main__':
-    multiclass = False
-    if not multiclass:
-        traind, testd = data_pipeline_redwine(val_and_test=False)
-        # Delete quality columns in data frames:
-        traind = traind.drop(columns=['quality'])
-        testd = testd.drop(columns=['quality'])
-        # Perform parameter tuning
-        # best_param = run_parameter_tuning_svm(train_data=traind, label_column='label')
+    traind, testd = data_pipeline_redwine()
+    # Delete quality columns in data frames:
+    traind = traind.drop(columns=['quality'])
+    testd = testd.drop(columns=['quality'])
 
-        # Train model with best found configuration
-        with open('../configurations/best_svm_config.pickle', 'rb') as f:
-            best_param = pickle.load(f)
-        train_svm_model(train_data=traind,
-                        label_column='label',
-                        config=best_param,
-                        test=True,
-                        test_data=testd,
-                        verbosity=True)
+    run_parameter_tuning_svm(train_data=traind, label_column='label')
 
-    else:
-        traind, testd = data_pipeline_redwine(val_and_test=False)
-        # Delete quality columns in data frames:
-        traind = traind.drop(columns=['label'])
-        testd = testd.drop(columns=['label'])
-        # Perform parameter tuning
-        best_param = run_parameter_tuning_svm(train_data=traind, label_column='quality')
+    # Train model with best found configuration
+    with open('../configurations/best_svm_config.pickle', 'rb') as f:
+        best_svm_param = pickle.load(f)
 
-        # Train model with best found configuration
-        with open('../configurations/best_svm_config.pickle', 'rb') as f:
-            best_param = pickle.load(f)
-        train_svm_model(train_data=traind,
-                        label_column='quality',
-                        config=best_param,
-                        test=True,
-                        test_data=testd,
-                        verbosity=True)
-
+    train_svm_model(train_data=traind,
+                    label_column='label',
+                    config=best_svm_param,
+                    test=True,
+                    test_data=testd,
+                    verbosity=True)
 
