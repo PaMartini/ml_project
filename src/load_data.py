@@ -299,7 +299,7 @@ def preprocess_wine(data: pd.DataFrame,
 
     else:
         traind, testd = perform_train_val_test_split(data=data,
-                                                     split=(0.8, 0, 0.2),
+                                                     split=(0.6, 0, 0.4),
                                                      shuffle=shuffle,
                                                      preserve_class_dist=preserve_class_dist)
         if normalize:
@@ -336,7 +336,7 @@ def preprocess_wine(data: pd.DataFrame,
                           f"are {num_bad} bad, {num_med} medium, {num_good} good samples. ")
                     print(f"Before oversampling in the test set there "
                           f"are {num_bad_te} bad, {num_med_te} medium, {num_good_te} good samples. ")
-                    baseline_pred = np.ones(testd.loc[:, 'label'].values.shape[0]) * 2
+                    baseline_pred = np.ones(testd.loc[:, 'label'].values.shape[0]) * 1
                     print("The baseline metrics given an all majority prediction are:")
                     b_acc, b_perc, b_rec, b_f1 = evaluate_class_predictions(
                         prediction=baseline_pred,
@@ -355,9 +355,9 @@ def preprocess_wine(data: pd.DataFrame,
                     traind, _ = smote.fit_resample(X=traind, y=traind.loc[:, 'label'].values)
 
                 if verbosity:
-                    num_bad = (traind.loc[:, 'label'].values == 1).sum()
-                    num_med = (traind.loc[:, 'label'].values == 2).sum()
-                    num_good = (traind.loc[:, 'label'].values == 3).sum()
+                    num_bad = (traind.loc[:, 'label'].values == 0).sum()
+                    num_med = (traind.loc[:, 'label'].values == 1).sum()
+                    num_good = (traind.loc[:, 'label'].values == 2).sum()
                     print(f"After oversampling in the training set there "
                           f"are {num_bad} bad, {num_med} medium, {num_good} good samples. ")
 
