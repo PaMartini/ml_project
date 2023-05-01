@@ -13,6 +13,11 @@ from evaluation import *
 
 
 class WineDataset(Dataset):
+    """
+    Dataset class for the wine quality dataset from the UCI ml repo.
+    Expects a pandas dataframe with structure [samples]x[features, labels] as an input.
+    For each sample returns the feature vector, the one hot encoded label vector and the integer label.
+    """
     def __init__(self, wine_df: pd.DataFrame):
         self.df = wine_df
         self.unique_labels, self.num_labels = self.find_labels()
@@ -97,10 +102,20 @@ class WineNet(torch.nn.Module):
             nn.Linear(in_features=2 * self.in_size, out_features=self.out_size),
         )
 
+        self.net2 = nn.Sequential(
+            nn.Linear(in_features=self.in_size, out_features=4 * self.in_size),
+            nn.LeakyReLU(),
+            nn.Linear(in_features=4 * self.in_size, out_features=4 * self.in_size),
+            nn.LeakyReLU(),
+            nn.Linear(in_features=4 * self.in_size, out_features=4 * self.in_size),
+            nn.LeakyReLU(),
+            nn.Linear(in_features=4 * self.in_size, out_features=self.out_size),
+        )
+
         self.last_activation = nn.Sigmoid()
 
     def forward(self, x):
-        x = self.net(x)
+        x = self.net2(x)
         # x = self.last_activation(x)
         return x
 
@@ -140,9 +155,10 @@ def train_loop(train_loader: DataLoader,
     val_losses = np.zeros(num_epochs)
     if track_metrics:
         accuracy = np.zeros(num_epochs)
-        precision = np.zeros(num_epochs)
-        recall = np.zeros(num_epochs)
-        f1 = np.zeros(num_epochs)
+        # precision = np.zeros(num_epochs)
+        precision = np.zeros((num_epochs, labels.shape[0]))
+        recall = np.zeros((num_epochs, labels.shape[0]))
+        f1 = np.zeros((num_epochs, labels.shape[0]))
 
     for epoch in range(num_epochs):
         if verbosity:
@@ -190,9 +206,9 @@ def train_loop(train_loader: DataLoader,
         val_losses[epoch] = running_val_loss / len(val_loader)
         if track_metrics:
             accuracy[epoch] = running_acc / len(val_loader)
-            precision[epoch] = running_pre / len(val_loader)
-            recall[epoch] = running_rec / len(val_loader)
-            f1[epoch] = running_f1 / len(val_loader)
+            precision[epoch, :] = running_pre / len(val_loader)
+            recall[epoch, :] = running_rec / len(val_loader)
+            f1[epoch, :] = running_f1 / len(val_loader)
 
         if verbosity:
             print(f"### Current train loss is {train_losses[epoch]} ###")
@@ -229,8 +245,8 @@ def run_training(n_epochs: int = 20,
     # Initialize optimizer.
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
     # Initialize loss function
-    # loss_fct = nn.CrossEntropyLoss(weight=torch.tensor([2/5, 1/5, 2/5]), reduction='mean', label_smoothing=0)
-    loss_fct = nn.CrossEntropyLoss(reduction='mean', label_smoothing=0)
+    loss_fct = nn.CrossEntropyLoss(weight=torch.tensor([48/100, 2/100, 48/100]), reduction='mean', label_smoothing=0)
+    # loss_fct = nn.CrossEntropyLoss(reduction='mean', label_smoothing=0)
 
     trained_model, train_losses, val_losses, metrics_dict = train_loop(train_loader=train_loader,
                                                                        val_loader=val_loader,
@@ -269,7 +285,6 @@ def run_training(n_epochs: int = 20,
         evaluate_class_predictions(prediction=predictions, ground_truth=val_gt_labels, labels=labels, verbosity=True)
 
 
-
 def plot_loss(train_loss: np.ndarray, val_loss: np.ndarray):
     plt.plot(np.arange(len(train_loss)), train_loss, label='Training loss')
     plt.plot(np.arange(len(val_loss)), val_loss, label='Validation loss')
@@ -282,6 +297,12 @@ def plot_loss(train_loss: np.ndarray, val_loss: np.ndarray):
 def plot_metrics(metrics_dict: dict):
     for key in metrics_dict:
         plt.plot(np.arange(len(metrics_dict[key])), metrics_dict[key], label=key)
+    plt.legend()
+    plt.show()
+    for key in metrics_dict:
+        if key == 'accuracy':
+            continue
+        plt.plot(np.arange(len(metrics_dict[key])), metrics_dict[key].sum(axis=1) / 3, label=key)
     plt.legend()
     plt.show()
 
@@ -319,7 +340,7 @@ def check_model():
 
 
 if __name__ == '__main__':
-    run_training(n_epochs=10, test=True, plot_losses=True, save_losses=False, plot_save_metrics=True)
+    run_training(n_epochs=100, test=True, plot_losses=True, save_losses=False, plot_save_metrics=True)
     # test_model(model_name='model_20230422-181611.pt')
     print('done')
 
