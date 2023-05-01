@@ -25,11 +25,11 @@ def evaluate_class_predictions(prediction: np.ndarray,
     else:
         accuracy = metr.accuracy_score(y_true=ground_truth, y_pred=prediction)
         precision = metr.precision_score(y_true=ground_truth, y_pred=prediction,
-                                         labels=labels, average='macro', zero_division=0)
+                                         labels=labels, average=None, zero_division=0)
         recall = metr.recall_score(y_true=ground_truth, y_pred=prediction,
-                                   labels=labels, average='macro', zero_division=0)
+                                   labels=labels, average=None, zero_division=0)
         f1 = metr.f1_score(y_true=ground_truth, y_pred=prediction,
-                           labels=labels, average='macro', zero_division=0)
+                           labels=labels, average=None, zero_division=0)
 
     if verbosity:
         for l in labels:
