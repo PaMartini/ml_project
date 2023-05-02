@@ -127,7 +127,7 @@ def save_ckp(model_state: dict, checkpoint_dir: str = "../checkpoints/") -> None
 
 
 def load_ckp(ckp_name: str,
-             model: Type[nn.Module],
+             model: WineNet,
              optimizer: Type[torch.optim.Optimizer] = None,
              checkpoint_dir: str = "../checkpoints/",
              ) -> Tuple[Any, Any, Any]:
@@ -267,7 +267,7 @@ def run_training(n_epochs: int = 20,
     if plot_save_metrics:
         with open('metrics_dict.pickle', 'wb') as f:
             pickle.dump(metrics_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
-        plot_metrics(metrics_dict=metrics_dict)
+        plot_metrics(metrics_dict=metrics_dict, single_plots=False)
 
     if test:
         val_gt_labels = np.array([])
@@ -294,44 +294,61 @@ def plot_loss(train_loss: np.ndarray, val_loss: np.ndarray):
     plt.show()
 
 
-def plot_metrics(metrics_dict: dict):
-    for key in metrics_dict:
-        plt.plot(np.arange(len(metrics_dict[key])), metrics_dict[key], label=key)
-    plt.legend()
-    plt.show()
+def plot_metrics(metrics_dict: dict, single_plots: bool = False) -> None:
+    """
+    Function for plotting the performance metrics of calculated during the training of the model.
+    :param metrics_dict: Dictionary with the metrics for each epoch stored in numpy arrays.
+    :param single_plots: Whether to produce a single plot for each of the metrics.
+    :return: None
+    """
+    # Plot metrics for individual classes.
+    for i, key in enumerate(metrics_dict):
+        if key == 'accuracy':
+            labels = key
+        else:
+            labels = np.array([key + " " + str(j) for j in range(3)])
+        plt.plot(np.arange(len(metrics_dict[key])), metrics_dict[key], label=labels)
+        if single_plots:
+            plt.legend()
+            plt.show()
+    if not single_plots:
+        plt.legend()
+        plt.show()
+
+    # Plot metrics averaged over classes.
     for key in metrics_dict:
         if key == 'accuracy':
-            continue
-        plt.plot(np.arange(len(metrics_dict[key])), metrics_dict[key].sum(axis=1) / 3, label=key)
+            plt.plot(np.arange(len(metrics_dict[key])), metrics_dict[key], label=key)
+        else:
+            plt.plot(np.arange(len(metrics_dict[key])), metrics_dict[key].sum(axis=1) / 3, label=key)
     plt.legend()
     plt.show()
 
 
-
-
-
-
-
-
-def test_model(model_name: str, checkpoint_dir: str = "../checkpoints/"):
-    model = WineNet(in_size=11, out_size=1)
+def load_test_model(model_name: str, checkpoint_dir: str = "../checkpoints/") -> None:
+    """
+    Function for loading a saved model and testing it on a validation set.
+    :param model_name: Filename of the model.
+    :param checkpoint_dir: Directory of the saved model.
+    :return: None
+    """
+    _, val_loader, labels = get_data_loaders_wine_data(val_and_test=False, batch_size=1, shuffle=True)
+    model = WineNet(in_size=11, out_size=labels.shape[0])
     model, _, _ = load_ckp(ckp_name=model_name, model=model, checkpoint_dir=checkpoint_dir)
-    _, val_loader, labels = get_data_loaders_wine_data(val_and_test=False, batch_size=1, shuffle=False)
 
-    flatten = nn.Flatten(start_dim=0, end_dim=-1)
-    model_outs = np.zeros(len(val_loader))
-    labels = np.zeros(len(val_loader))
+    val_gt_labels = np.array([])
+    predictions = np.array([])
     for i, data in tqdm(enumerate(val_loader), total=len(val_loader)):
         x = data[0].to(torch.float32)
-        y = data[1].to(torch.float32)
-        labels[i] = float(flatten(y))
+        # y = data[1].to(torch.float32)
+        int_y = np.array(data[2])
         model.eval()
         with torch.no_grad():
             model_out = model(x)
-            model_outs[i] = float(flatten(model_out))
-
-    preds = (model_outs >= 0.5).astype(float)
-    evaluate_class_predictions(prediction=preds, ground_truth=labels, labels=labels, verbosity=True)
+            pred = np.array(torch.argmax(model_out, dim=1).detach())
+            predictions = np.hstack((predictions, pred))
+            val_gt_labels = np.hstack((val_gt_labels, int_y))
+    evaluate_class_predictions(prediction=predictions, ground_truth=val_gt_labels, labels=labels, verbosity=True)
 
 
 def check_model():
@@ -341,6 +358,6 @@ def check_model():
 
 if __name__ == '__main__':
     run_training(n_epochs=100, test=True, plot_losses=True, save_losses=False, plot_save_metrics=True)
-    # test_model(model_name='model_20230422-181611.pt')
+    # load_test_model(model_name='model_20230502-101737.pt')
     print('done')
 
