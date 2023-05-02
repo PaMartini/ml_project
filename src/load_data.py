@@ -25,8 +25,20 @@ def load_wine(filename: str, verbosity: bool = False) -> pd.DataFrame:
     if verbosity:
         print(data.head())
         print(f"The features are {list(data.columns)}")
-        print(f"The possible values of the quality are {np.unique(data.loc[:, 'quality'])}.")
-        plt.hist(data.loc[:, 'quality'], bins=6)
+        quality_ratings = np.unique(data.loc[:, 'quality'].values)
+        print(f"The possible values of the quality are {quality_ratings}.")
+        num_samples = []
+        for i in quality_ratings:
+            num_ = (data.loc[:, 'quality'].values == i).sum()
+            num_samples.append(num_)
+            print(f"There are {num_} samples with quality rating {i}.")
+
+        num_samples = np.array(num_samples)
+        plt.bar(x=quality_ratings, height=num_samples, width=0.8)
+
+        for i in range(num_samples.shape[0]):
+            plt.text(quality_ratings[i], num_samples[i] + 6, num_samples[i], ha='center')
+
         plt.show()
 
     return data
@@ -242,8 +254,8 @@ def preprocess_wine(data: pd.DataFrame,
     elif labelling == 'bmg':
         quality = data.loc[:, 'quality'].values
         bad_labels = (quality <= 4).astype(float) * 0
-        medium_labels = np.logical_and((5 <= quality), (quality <= 7)).astype(float) * 1
-        good_labels = (8 <= quality).astype(float) * 2
+        medium_labels = np.logical_and((5 <= quality), (quality <= 6)).astype(float) * 1
+        good_labels = (7 <= quality).astype(float) * 2
         bad_medium_good = bad_labels + medium_labels + good_labels
         data['label'] = bad_medium_good
 
@@ -401,6 +413,9 @@ def data_pipeline_whitewine(val_and_test: bool = False) -> Tuple[pd.DataFrame, .
 
 
 if __name__ == '__main__':
+    load_wine("../data/wine_data/winequality-white.csv", verbosity=True)
+    load_wine("../data/wine_data/winequality-red.csv", verbosity=True)
+
     out_red = data_pipeline_redwine(val_and_test=False)
     out_white = data_pipeline_whitewine(val_and_test=False)
 
