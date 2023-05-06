@@ -68,6 +68,7 @@ def train_dt_classifier(train_data,
         print(model.feature_importances_)
 
     if test_data is not None:
+        print("### Test results decision tree ###")
         x_test = test_data.drop(columns=[label_column]).values
         y_test = test_data.loc[:, label_column].values
 
@@ -147,6 +148,7 @@ def train_random_forest(train_data,
             print(f"The out of bag error of the random forest classifier is {model.oob_score_}.")
 
     if test_data is not None:
+        print("### Test results random forest ###")
         x_test = test_data.drop(columns=[label_column]).values
         y_test = test_data.loc[:, label_column].values
 

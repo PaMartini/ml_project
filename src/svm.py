@@ -59,6 +59,7 @@ def train_svm_model(train_data: pd.DataFrame,
         print(model.support_)
 
     if test_data is not None:
+        print("### Test results SVM ###")
         x_test = test_data.drop(columns=[label_column]).values
         y_test = test_data.loc[:, label_column].values
 
