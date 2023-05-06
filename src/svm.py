@@ -13,7 +13,7 @@ def train_svm_model(train_data: pd.DataFrame,
                     label_column: str = 'label',
                     config: Union[dict, None] = None,
                     test_data: Union[None, pd.DataFrame] = None,
-                    verbosity: bool = False) -> SVC:
+                    verbosity: bool = False) -> Union[Tuple[SVC, Any, Any, Any, Any], SVC]:
     """
     Function for training and testing an SVM model.
     :param train_data: Dataframe with train data.
@@ -67,7 +67,11 @@ def train_svm_model(train_data: pd.DataFrame,
 
         pred = model.predict(X=x_test)
 
-        evaluate_class_predictions(prediction=pred, ground_truth=y_test, labels=labels, verbosity=True)
+        accuracy, precision, recall, f1 = evaluate_class_predictions(prediction=pred,
+                                                                     ground_truth=y_test,
+                                                                     labels=labels,
+                                                                     verbosity=True)
+        return model, accuracy, precision, recall, f1
 
     return model
 

@@ -34,7 +34,8 @@ def train_gaussian_naive_bayes(train_data,
                                label_column: str = 'label',
                                config: Union[dict, None] = None,
                                test_data: Union[None, pd.DataFrame] = None,
-                               verbosity: bool = False) -> GaussianNB:
+                               verbosity: bool = False) \
+        -> Union[Tuple[GaussianNB, Any, Any, Any, Any], GaussianNB]:
     """
     Function for training and testing a gaussian naive bayes model.
     :param train_data: Dataframe with train data.
@@ -67,7 +68,11 @@ def train_gaussian_naive_bayes(train_data,
 
         pred = model.predict(X=x_test)
 
-        evaluate_class_predictions(prediction=pred, ground_truth=y_test, labels=labels, verbosity=True)
+        accuracy, precision, recall, f1 = evaluate_class_predictions(prediction=pred,
+                                                                     ground_truth=y_test,
+                                                                     labels=labels,
+                                                                     verbosity=True)
+        return model, accuracy, precision, recall, f1
 
     return model
 

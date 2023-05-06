@@ -17,7 +17,8 @@ def train_dt_classifier(train_data,
                         label_column: str = 'label',
                         config: Union[dict, None] = None,
                         test_data: Union[None, pd.DataFrame] = None,
-                        verbosity: bool = False) -> DecisionTreeClassifier:
+                        verbosity: bool = False) \
+        -> Union[Tuple[DecisionTreeClassifier, Any, Any, Any, Any], DecisionTreeClassifier]:
     """
     Function for training and testing a decision tree classifier.
     :param train_data: Dataframe with train data.
@@ -64,7 +65,7 @@ def train_dt_classifier(train_data,
         plt.show()
         report = tree.export_text(model)
         #print(report)
-        print(f"The feature importances according to the '{config['splitter']}' splitting rule are:")
+        print(f"The feature importances according to the '{config['criterion']}' splitting criterion are:")
         print(model.feature_importances_)
 
     if test_data is not None:
@@ -76,7 +77,11 @@ def train_dt_classifier(train_data,
 
         pred = model.predict(X=x_test)
 
-        evaluate_class_predictions(prediction=pred, ground_truth=y_test, labels=labels, verbosity=True)
+        accuracy, precision, recall, f1 = evaluate_class_predictions(prediction=pred,
+                                                                     ground_truth=y_test,
+                                                                     labels=labels,
+                                                                     verbosity=True)
+        return model, accuracy, precision, recall, f1
 
     return model
 
@@ -85,7 +90,8 @@ def train_random_forest(train_data,
                         label_column: str = 'label',
                         config: Union[dict, None] = None,
                         test_data: Union[None, pd.DataFrame] = None,
-                        verbosity: bool = False) -> RandomForestClassifier:
+                        verbosity: bool = False) \
+        -> Union[Tuple[RandomForestClassifier, Any, Any, Any, Any], RandomForestClassifier]:
     """
     Function for training and testing a random forest classifier.
     :param train_data: Dataframe with train data.
@@ -101,7 +107,6 @@ def train_random_forest(train_data,
 
     if config is None:
         config = {'criterion': 'gini',
-                  'splitter': 'best',
                   'max_depth': None,
                   'min_samples_split': 2,
                   'min_samples_leaf': 1,
@@ -142,7 +147,7 @@ def train_random_forest(train_data,
     model.fit(X=x, y=y)
 
     if verbosity:
-        print(f"The feature importances according to the '{config['criterion']}' splitting rule are:")
+        print(f"The feature importances according to the '{config['criterion']}' splitting criterion are:")
         print(model.feature_importances_)
         if model.oob_score:
             print(f"The out of bag error of the random forest classifier is {model.oob_score_}.")
@@ -156,7 +161,11 @@ def train_random_forest(train_data,
 
         pred = model.predict(X=x_test)
 
-        evaluate_class_predictions(prediction=pred, ground_truth=y_test, labels=labels, verbosity=True)
+        accuracy, precision, recall, f1 = evaluate_class_predictions(prediction=pred,
+                                                                     ground_truth=y_test,
+                                                                     labels=labels,
+                                                                     verbosity=True)
+        return model, accuracy, precision, recall, f1
 
     return model
 
