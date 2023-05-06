@@ -4,10 +4,30 @@ import pickle
 import numpy as np
 import pandas as pd
 from sklearn.naive_bayes import GaussianNB
+from pingouin import multivariate_normality
 
 from evaluation import evaluate_class_predictions
-from load_data import data_pipeline_redwine
+from load_data import *
 from auxiliary_functions import parameter_tuning_wrapper
+
+
+def run_multivariate_henze_zirkler_test(data: pd.DataFrame,
+                                        label_columns: list[str] = None,
+                                        normalize: bool = False,
+                                        verbosity: bool = False) -> Tuple[float, float, bool]:
+    if label_columns is None:
+        label_columns = ['label', 'quality']
+    # data = data.drop(columns=label_columns).values
+    if normalize:
+        mean_ = np.mean(data, axis=0)
+        std_ = np.std(data, axis=0)
+        data = (data - mean_) / std_
+
+    hz, pval, normal = multivariate_normality(X=data, alpha=0.05)
+    if verbosity:
+        print(f"## Henze-Zirkler test for normality yields {normal}. "
+              f"\n## The p-value is {pval}. \n## The value of the test statistic is {hz}.")
+    return hz, pval, normal
 
 
 def train_gaussian_naive_bayes(train_data,
@@ -73,6 +93,9 @@ def run_parameter_tuning_nb(train_data: pd.DataFrame,
 
 
 if __name__ == '__main__':
+    fn_white = "../data/wine_data/winequality-red.csv"
+    data_white = load_wine(filename=fn_white, verbosity=False)
+    run_multivariate_henze_zirkler_test(data=data_white, normalize=True, label_columns=['quality'], verbosity=True)
     traind, testd = data_pipeline_redwine()
     # Delete quality columns in data frames:
     traind = traind.drop(columns=['quality'])
