@@ -24,6 +24,10 @@ def load_wine(filename: str, verbosity: bool = False) -> pd.DataFrame:
     data = pd.read_csv(filename, sep=";")
     if verbosity:
         print(data.head())
+        # data.describe(include='all').to_csv("my_description.csv")
+        # print(data.describe(include='all'))
+        total_samples = data.shape[0]
+        print(f"The dataset contains {total_samples} samples.")
         print(f"The features are {list(data.columns)}")
         quality_ratings = np.unique(data.loc[:, 'quality'].values)
         print(f"The possible values of the quality are {quality_ratings}.")
@@ -31,7 +35,7 @@ def load_wine(filename: str, verbosity: bool = False) -> pd.DataFrame:
         for i in quality_ratings:
             num_ = (data.loc[:, 'quality'].values == i).sum()
             num_samples.append(num_)
-            print(f"There are {num_} samples with quality rating {i}.")
+            print(f"There are {num_} ({(num_ / total_samples).round(decimals=4)}%) samples with quality rating {i}.")
 
         num_samples = np.array(num_samples)
         plt.bar(x=quality_ratings, height=num_samples, width=0.8)
@@ -140,9 +144,9 @@ def perform_pca_reduction(data: pd.DataFrame, pca_dim: int, label_columns: list[
     return pca_data, pca
 
 
-def normalize_data(data: pd.DataFrame, label_columns: list[str, ...]) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray]:
+def standardize_data(data: pd.DataFrame, label_columns: list[str, ...]) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray]:
     """
-    Function for normalizing a dataframe using (X - mean) / stdev.
+    Function for standardizing a dataframe using (X - mean) / stdev.
     :param data: Dataframe.
     :param label_columns: Names of columns with label information. They are excluded from the normalization.
     :return: Normalized dataframe, array with means, array with stdevs.
@@ -153,18 +157,18 @@ def normalize_data(data: pd.DataFrame, label_columns: list[str, ...]) -> Tuple[p
 
     means = np.mean(df_w_out_labels.values, axis=0)
     stdev = np.std(df_w_out_labels.values, axis=0)
-    df_w_out_labels = calc_normalization(data=df_w_out_labels, means=means, stdev=stdev)
+    df_w_out_labels = calc_standardization(data=df_w_out_labels, means=means, stdev=stdev)
 
-    normalized_df = pd.concat([df_w_out_labels, df_label_columns], axis=1)
+    standardized_df = pd.concat([df_w_out_labels, df_label_columns], axis=1)
 
-    return normalized_df, means, stdev
+    return standardized_df, means, stdev
 
 
-def calc_normalization(data: Union[np.ndarray, pd.DataFrame],
-                       means: np.ndarray,
-                       stdev: np.ndarray) -> Union[np.ndarray, pd.DataFrame]:
+def calc_standardization(data: Union[np.ndarray, pd.DataFrame],
+                         means: np.ndarray,
+                         stdev: np.ndarray) -> Union[np.ndarray, pd.DataFrame]:
     """
-    Function for the normalization calculations. Works inplace.
+    Function for the standardization calculations. Works inplace.
     :param data: Dataframe or array.
     :param means: Array with means.
     :param stdev: Array with standard deviations.
@@ -172,6 +176,40 @@ def calc_normalization(data: Union[np.ndarray, pd.DataFrame],
     """
     data -= means
     data /= stdev
+    return data
+
+
+def normalize_data(data: pd.DataFrame, label_columns: list[str, ...]) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray]:
+    """
+    Function for normalizing a dataframe using (X - min(X)) / (max(X) - min(X)).
+    :param data: Dataframe.
+    :param label_columns: Names of columns with label information. They are excluded from the normalization.
+    :return: Normalized dataframe, array with mins, array with maxs.
+    """
+    df_w_out_labels = data.drop(columns=label_columns)
+    df_label_columns = data.loc[:, label_columns]
+
+    mins = np.min(df_w_out_labels.values, axis=0)
+    maxs = np.max(df_w_out_labels.values, axis=0)
+    df_w_out_labels = calc_normalization(data=df_w_out_labels, mins=mins, maxs=maxs)
+
+    normalized_df = pd.concat([df_w_out_labels, df_label_columns], axis=1)
+
+    return normalized_df, mins, maxs
+
+
+def calc_normalization(data: Union[np.ndarray, pd.DataFrame],
+                       mins: np.ndarray,
+                       maxs: np.ndarray) -> Union[np.ndarray, pd.DataFrame]:
+    """
+    Function for the standardization calculations. Works inplace.
+    :param data: Dataframe or array.
+    :param mins: Array with minima.
+    :param maxs: Array with maxima.
+    :return: Normalized Dataframe or array.
+    """
+    data -= mins
+    data /= (maxs - mins)
     return data
 
 
@@ -223,7 +261,7 @@ def preprocess_wine(data: pd.DataFrame,
                     preserve_class_dist: bool = False,
                     val_and_test: bool = False,
                     over_sample: str = None,
-                    normalize: bool = True,
+                    scaling: str = 'standardize',
                     pca_dim: int = -1,
                     labelling: str = 'bmg',
                     verbosity: bool = False) -> Tuple[pd.DataFrame, ...]:
@@ -234,8 +272,8 @@ def preprocess_wine(data: pd.DataFrame,
     :param preserve_class_dist: Whether to approximately preserve the class distribution in the data
     when performing the split, or not.
     :param val_and_test: Whether to split the data into a train, val and test or a train and test set.
-    :param over_sample: If 'labelling == 'bmg'' whether to resample the minority classes or not.
-    :param normalize: Whether to normalize the data, or not.
+    :param over_sample: Available if 'labelling == 'bmg'', whether to resample the minority classes or not.
+    :param scaling: Which scaling method to apply to the data.
     :param pca_dim: Principal components of PCA dimensionality reduction. Default -1 corresponds to no reduction.
     :param labelling: Sets how to label the data.
     :param verbosity: Whether to print information on the process, or not.
@@ -244,6 +282,8 @@ def preprocess_wine(data: pd.DataFrame,
     assert labelling in {'bmg', 'binary', 'quality'}, \
         "Parameter 'labelling must be one of the following 'bmg', 'binary, 'quality'."
     assert over_sample in {'random', 'smote', None}, "Parameter 'over_sample' must be 'random', 'smote' or None."
+    assert scaling in {'standardize', 'min_max_norm', None}, \
+        "Parameter 'scaling' must be 'standardize', 'min_max_norm' or None."
 
     if labelling == 'binary':
         # Annotate with binary labels: 0 = bad (rating <= 5), 1 = good (rating > 5)
@@ -280,19 +320,34 @@ def preprocess_wine(data: pd.DataFrame,
                                                            shuffle=shuffle,
                                                            preserve_class_dist=preserve_class_dist)
 
-        if normalize:
-            traind, means, stdev = normalize_data(data=traind, label_columns=['quality', 'label'])
-            # Apply normalization to val and test data using means, stdev from traindata
-            val_w_out_labels = vald.drop(columns=['quality', 'label'])
-            val_label_columns = vald.loc[:, ['quality', 'label']]
-            testd_w_out_labels = testd.drop(columns=['quality', 'label'])
-            testd_label_columns = testd.loc[:, ['quality', 'label']]
-            val_w_out_labels -= means
-            val_w_out_labels /= stdev
-            testd_w_out_labels -= means
-            testd_w_out_labels /= stdev
-            testd = pd.concat([testd_w_out_labels, testd_label_columns], axis=1)
-            vald = pd.concat([val_w_out_labels, val_label_columns], axis=1)
+        if scaling is not None:
+            if scaling == 'standardize':
+                traind, means, stdev = standardize_data(data=traind, label_columns=['quality', 'label'])
+                # Apply normalization to val and test data using means, stdev from traindata
+                val_w_out_labels = vald.drop(columns=['quality', 'label'])
+                val_label_columns = vald.loc[:, ['quality', 'label']]
+                testd_w_out_labels = testd.drop(columns=['quality', 'label'])
+                testd_label_columns = testd.loc[:, ['quality', 'label']]
+                val_w_out_labels -= means
+                val_w_out_labels /= stdev
+                testd_w_out_labels -= means
+                testd_w_out_labels /= stdev
+                testd = pd.concat([testd_w_out_labels, testd_label_columns], axis=1)
+                vald = pd.concat([val_w_out_labels, val_label_columns], axis=1)
+            if scaling == 'min_max_norm':
+                traind, mins, maxs = normalize_data(data=traind, label_columns=['quality', 'label'])
+                # Apply min-max-normalization to val and test data using mins, maxs from traindata
+                val_w_out_labels = vald.drop(columns=['quality', 'label'])
+                val_label_columns = vald.loc[:, ['quality', 'label']]
+                testd_w_out_labels = testd.drop(columns=['quality', 'label'])
+                testd_label_columns = testd.loc[:, ['quality', 'label']]
+                val_w_out_labels -= mins
+                val_w_out_labels /= (maxs - mins)
+                testd_w_out_labels -= mins
+                testd_w_out_labels /= (maxs - mins)
+                testd = pd.concat([testd_w_out_labels, testd_label_columns], axis=1)
+                vald = pd.concat([val_w_out_labels, val_label_columns], axis=1)
+
 
         if pca_dim != -1:
             traind, train_pca = perform_pca_reduction(data=traind, pca_dim=pca_dim, label_columns=['quality', 'label'])
@@ -311,17 +366,28 @@ def preprocess_wine(data: pd.DataFrame,
 
     else:
         traind, testd = perform_train_val_test_split(data=data,
-                                                     split=(0.6, 0, 0.4),
+                                                     split=(0.67, 0, 0.33),
                                                      shuffle=shuffle,
                                                      preserve_class_dist=preserve_class_dist)
-        if normalize:
-            traind, means, stdev = normalize_data(data=traind, label_columns=['quality', 'label'])
-            # Apply normalization to test data using means, stdev from train data
-            testd_w_out_labels = testd.drop(columns=['quality', 'label'])
-            testd_label_columns = testd.loc[:, ['quality', 'label']]
-            testd_w_out_labels -= means
-            testd_w_out_labels /= stdev
-            testd = pd.concat([testd_w_out_labels, testd_label_columns], axis=1)
+        if scaling is not None:
+            if scaling == 'standardize':
+                traind, means, stdev = standardize_data(data=traind, label_columns=['quality', 'label'])
+                # Apply normalization to test data using means, stdev from train data
+                testd_w_out_labels = testd.drop(columns=['quality', 'label'])
+                testd_label_columns = testd.loc[:, ['quality', 'label']]
+                testd_w_out_labels -= means
+                testd_w_out_labels /= stdev
+                testd = pd.concat([testd_w_out_labels, testd_label_columns], axis=1)
+            if scaling == 'min_max_norm':
+                print('####################### fuck !!!!')
+
+                traind, mins, maxs = normalize_data(data=traind, label_columns=['quality', 'label'])
+                # Apply min-max-normalization to val and test data using mins, maxs from traindata
+                testd_w_out_labels = testd.drop(columns=['quality', 'label'])
+                testd_label_columns = testd.loc[:, ['quality', 'label']]
+                testd_w_out_labels -= mins
+                testd_w_out_labels /= (maxs - mins)
+                testd = pd.concat([testd_w_out_labels, testd_label_columns], axis=1)
 
         if pca_dim != -1:
             traind, train_pca = perform_pca_reduction(data=traind, pca_dim=pca_dim, label_columns=['quality', 'label'])
@@ -337,6 +403,7 @@ def preprocess_wine(data: pd.DataFrame,
 
         if labelling == 'bmg':
             if over_sample is not None:
+                num_train_samples = traind.shape[0]
                 num_bad = (traind.loc[:, 'label'].values == 0).sum()
                 num_med = (traind.loc[:, 'label'].values == 1).sum()
                 num_good = (traind.loc[:, 'label'].values == 2).sum()
@@ -345,7 +412,9 @@ def preprocess_wine(data: pd.DataFrame,
                 num_good_te = (testd.loc[:, 'label'].values == 2).sum()
                 if verbosity:
                     print(f"Before oversampling in the training set there "
-                          f"are {num_bad} bad, {num_med} medium, {num_good} good samples. ")
+                          f"are {num_bad} ({(num_bad / num_train_samples).round(decimals=4)}%) bad, "
+                          f"{num_med} ({(num_med / num_train_samples).round(decimals=4)}%) medium, "
+                          f"{num_good} ({(num_good / num_train_samples).round(decimals=4)}%) good samples. ")
                     print(f"Before oversampling in the test set there "
                           f"are {num_bad_te} bad, {num_med_te} medium, {num_good_te} good samples. ")
                     baseline_pred = np.ones(testd.loc[:, 'label'].values.shape[0]) * 1
@@ -367,16 +436,26 @@ def preprocess_wine(data: pd.DataFrame,
                     traind, _ = smote.fit_resample(X=traind, y=traind.loc[:, 'label'].values)
 
                 if verbosity:
+                    num_train_samples = traind.shape[0]
                     num_bad = (traind.loc[:, 'label'].values == 0).sum()
                     num_med = (traind.loc[:, 'label'].values == 1).sum()
                     num_good = (traind.loc[:, 'label'].values == 2).sum()
-                    print(f"After oversampling in the training set there "
-                          f"are {num_bad} bad, {num_med} medium, {num_good} good samples. ")
+                    print(f"After oversampling the training set consists of {num_train_samples} samples with "
+                          f"are {num_bad} ({(num_bad / num_train_samples).round(decimals=4)}%) bad, "
+                          f"{num_med} ({(num_med / num_train_samples).round(decimals=4)}%) medium, "
+                          f"{num_good} ({(num_good / num_train_samples).round(decimals=4)}%) good samples. ")
 
         return traind, testd
 
 
-def data_pipeline_redwine(val_and_test: bool = False) -> Tuple[pd.DataFrame, ...]:
+def data_pipeline_redwine(shuffle: bool = True,
+                          preserve_class_dist: bool = True,
+                          val_and_test: bool = False,
+                          over_sample: str = None,
+                          scaling: str = 'standardize',
+                          pca_dim: int = -1,
+                          labelling: str = 'bmg',
+                          verbosity: bool = False) -> Tuple[pd.DataFrame, ...]:
     """
     Example workflow for loading and preprocessing of redwine data set.
     :return: Redwine data set, preprocessed and split into training and test set.
@@ -384,17 +463,24 @@ def data_pipeline_redwine(val_and_test: bool = False) -> Tuple[pd.DataFrame, ...
     fn_red = "../data/wine_data/winequality-red.csv"
     data_red = load_wine(filename=fn_red, verbosity=False)
     return preprocess_wine(data=data_red,
-                           shuffle=True,
-                           preserve_class_dist=True,
+                           shuffle=shuffle,
+                           preserve_class_dist=preserve_class_dist,
                            val_and_test=val_and_test,
-                           over_sample='smote',
-                           normalize=True,
-                           pca_dim=-1,
-                           labelling='bmg',
-                           verbosity=True)
+                           over_sample=over_sample,
+                           scaling=scaling,
+                           pca_dim=pca_dim,
+                           labelling=labelling,
+                           verbosity=verbosity)
 
 
-def data_pipeline_whitewine(val_and_test: bool = False) -> Tuple[pd.DataFrame, ...]:
+def data_pipeline_whitewine(shuffle: bool = True,
+                            preserve_class_dist: bool = True,
+                            val_and_test: bool = False,
+                            over_sample: str = None,
+                            scaling: str = 'standardize',
+                            pca_dim: int = -1,
+                            labelling: str = 'bmg',
+                            verbosity: bool = False) -> Tuple[pd.DataFrame, ...]:
     """
     Example workflow for loading and preprocessing of whitewine data set.
     :return: Redwine data set, preprocessed and split into training and test set.
@@ -402,22 +488,50 @@ def data_pipeline_whitewine(val_and_test: bool = False) -> Tuple[pd.DataFrame, .
     fn_white = "../data/wine_data/winequality-white.csv"
     data_white = load_wine(filename=fn_white, verbosity=False)
     return preprocess_wine(data=data_white,
-                           shuffle=True,
-                           preserve_class_dist=True,
+                           shuffle=shuffle,
+                           preserve_class_dist=preserve_class_dist,
                            val_and_test=val_and_test,
-                           over_sample='smote',
-                           normalize=True,
-                           pca_dim=-1,
-                           labelling='bmg',
-                           verbosity=True)
+                           over_sample=over_sample,
+                           scaling=scaling,
+                           pca_dim=pca_dim,
+                           labelling=labelling,
+                           verbosity=verbosity)
 
+
+def data_pipeline_concat_red_white(shuffle: bool = True,
+                                   preserve_class_dist: bool = True,
+                                   val_and_test: bool = False,
+                                   over_sample: str = None,
+                                   scaling: str = 'standardize',
+                                   pca_dim: int = -1,
+                                   labelling: str = 'bmg',
+                                   verbosity: bool = False) -> Tuple[pd.DataFrame, ...]:
+
+    fn_red = "../data/wine_data/winequality-red.csv"
+    fn_white = "../data/wine_data/winequality-white.csv"
+    data_red = load_wine(filename=fn_red, verbosity=False)
+    data_white = load_wine(filename=fn_white, verbosity=False)
+
+    data = pd.concat([data_red, data_white], axis=0)
+
+    return preprocess_wine(data=data,
+                           shuffle=shuffle,
+                           preserve_class_dist=preserve_class_dist,
+                           val_and_test=val_and_test,
+                           over_sample=over_sample,
+                           scaling=scaling,
+                           pca_dim=pca_dim,
+                           labelling=labelling,
+                           verbosity=verbosity)
 
 if __name__ == '__main__':
-    load_wine("../data/wine_data/winequality-white.csv", verbosity=True)
-    load_wine("../data/wine_data/winequality-red.csv", verbosity=True)
+    # load_wine("../data/wine_data/winequality-red.csv", verbosity=True)
+    # load_wine("../data/wine_data/winequality-white.csv", verbosity=True)
 
-    out_red = data_pipeline_redwine(val_and_test=False)
-    out_white = data_pipeline_whitewine(val_and_test=False)
+    out_red = data_pipeline_redwine()
+    out_white = data_pipeline_whitewine()
+
+    out_concat = data_pipeline_concat_red_white()
 
 
     # fn_white = "../data/wine_data/winequality-white.csv"
