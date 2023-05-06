@@ -379,8 +379,6 @@ def preprocess_wine(data: pd.DataFrame,
                 testd_w_out_labels /= stdev
                 testd = pd.concat([testd_w_out_labels, testd_label_columns], axis=1)
             if scaling == 'min_max_norm':
-                print('####################### fuck !!!!')
-
                 traind, mins, maxs = normalize_data(data=traind, label_columns=['quality', 'label'])
                 # Apply min-max-normalization to val and test data using mins, maxs from traindata
                 testd_w_out_labels = testd.drop(columns=['quality', 'label'])
