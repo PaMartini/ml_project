@@ -16,7 +16,6 @@ from auxiliary_functions import parameter_tuning_wrapper
 def train_dt_classifier(train_data,
                         label_column: str = 'label',
                         config: Union[dict, None] = None,
-                        test: bool = False,
                         test_data: Union[None, pd.DataFrame] = None,
                         verbosity: bool = False) -> DecisionTreeClassifier:
     """
@@ -24,8 +23,7 @@ def train_dt_classifier(train_data,
     :param train_data: Dataframe with train data.
     :param label_column: Name of the column with the labels.
     :param config: Dictionary with parameters of the decision tree classifier.
-    :param test: Whether to evaluate the trained classifier on the test set or not.
-    :param test_data: Dataframe with test data.
+    :param test_data: Dataframe with test data. If None no testing is done.
     :param verbosity: Whether to print information on the trained classifier or not.
     :return: Trained decision tree classifier.
     """
@@ -69,7 +67,7 @@ def train_dt_classifier(train_data,
         print(f"The feature importances according to the '{config['splitter']}' splitting rule are:")
         print(model.feature_importances_)
 
-    if test:
+    if test_data is not None:
         x_test = test_data.drop(columns=[label_column]).values
         y_test = test_data.loc[:, label_column].values
 
@@ -85,7 +83,6 @@ def train_dt_classifier(train_data,
 def train_random_forest(train_data,
                         label_column: str = 'label',
                         config: Union[dict, None] = None,
-                        test: bool = False,
                         test_data: Union[None, pd.DataFrame] = None,
                         verbosity: bool = False) -> RandomForestClassifier:
     """
@@ -93,8 +90,7 @@ def train_random_forest(train_data,
     :param train_data: Dataframe with train data.
     :param label_column: Name of the column with the labels.
     :param config: Dictionary with parameters of the random forest classifier.
-    :param test: Whether to evaluate the trained classifier on the test set or not.
-    :param test_data: Dataframe with test data.
+    :param test_data: Dataframe with test data. If None no testing is done.
     :param verbosity: Whether to print information on the trained classifier or not.
     :return: Trained random forest classifier.
     """
@@ -150,7 +146,7 @@ def train_random_forest(train_data,
         if model.oob_score:
             print(f"The out of bag error of the random forest classifier is {model.oob_score_}.")
 
-    if test:
+    if test_data is not None:
         x_test = test_data.drop(columns=[label_column]).values
         y_test = test_data.loc[:, label_column].values
 

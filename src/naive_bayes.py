@@ -33,7 +33,6 @@ def run_multivariate_henze_zirkler_test(data: pd.DataFrame,
 def train_gaussian_naive_bayes(train_data,
                                label_column: str = 'label',
                                config: Union[dict, None] = None,
-                               test: bool = False,
                                test_data: Union[None, pd.DataFrame] = None,
                                verbosity: bool = False) -> GaussianNB:
     """
@@ -41,8 +40,7 @@ def train_gaussian_naive_bayes(train_data,
     :param train_data: Dataframe with train data.
     :param label_column: Name of the column with the labels.
     :param config: Dictionary with parameters of naive bayes model.
-    :param test: Whether to evaluate the trained model on the test set or not.
-    :param test_data: Dataframe with test data.
+    :param test_data: Dataframe with test data. If None no testing is done.
     :param verbosity: Whether to print information on the trained model or not.
     :return: Trained naive bayes model.
     """
@@ -60,7 +58,7 @@ def train_gaussian_naive_bayes(train_data,
 
     if verbosity:
         print(f"The class counts are {model.class_count_}, the resulting priors are {model.class_prior_}.")
-    if test:
+    if test_data is not None:
         x_test = test_data.drop(columns=[label_column]).values
         y_test = test_data.loc[:, label_column].values
 

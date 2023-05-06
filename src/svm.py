@@ -12,7 +12,6 @@ from auxiliary_functions import parameter_tuning_wrapper
 def train_svm_model(train_data: pd.DataFrame,
                     label_column: str = 'label',
                     config: Union[dict, None] = None,
-                    test: bool = False,
                     test_data: Union[None, pd.DataFrame] = None,
                     verbosity: bool = False) -> SVC:
     """
@@ -20,8 +19,7 @@ def train_svm_model(train_data: pd.DataFrame,
     :param train_data: Dataframe with train data.
     :param label_column: Name of the column with the labels.
     :param config: Dictionary with parameters of SVM model.
-    :param test: Whether to evaluate the trained model on the test set or not.
-    :param test_data: Dataframe with test data.
+    :param test_data: Dataframe with test data. If None no testing is done.
     :param verbosity: Whether to print information on the trained model or not.
     :return: Trained SVM model.
     """
@@ -60,7 +58,7 @@ def train_svm_model(train_data: pd.DataFrame,
         print("The indices of the support vectors in the training set are:")
         print(model.support_)
 
-    if test:
+    if test_data is not None:
         x_test = test_data.drop(columns=[label_column]).values
         y_test = test_data.loc[:, label_column].values
 
@@ -106,7 +104,7 @@ if __name__ == '__main__':
     traind = traind.drop(columns=['quality'])
     testd = testd.drop(columns=['quality'])
 
-    run_parameter_tuning_svm(train_data=traind, label_column='label')
+    # run_parameter_tuning_svm(train_data=traind, label_column='label')
 
     # Train model with best found configuration
     with open('../configurations/best_svm_config.pickle', 'rb') as f:
@@ -115,6 +113,13 @@ if __name__ == '__main__':
     train_svm_model(train_data=traind,
                     label_column='label',
                     config=best_svm_param,
+                    test=True,
+                    test_data=testd,
+                    verbosity=True)
+
+    train_svm_model(train_data=traind,
+                    label_column='label',
+                    config=None,
                     test=True,
                     test_data=testd,
                     verbosity=True)
