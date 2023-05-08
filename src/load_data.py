@@ -400,29 +400,29 @@ def preprocess_wine(data: pd.DataFrame,
                 print(train_pca.explained_variance_ratio_)
 
         if labelling == 'bmg':
-            if over_sample is not None:
-                num_train_samples = traind.shape[0]
-                num_bad = (traind.loc[:, 'label'].values == 0).sum()
-                num_med = (traind.loc[:, 'label'].values == 1).sum()
-                num_good = (traind.loc[:, 'label'].values == 2).sum()
-                num_bad_te = (testd.loc[:, 'label'].values == 0).sum()
-                num_med_te = (testd.loc[:, 'label'].values == 1).sum()
-                num_good_te = (testd.loc[:, 'label'].values == 2).sum()
-                if verbosity:
-                    print(f"Before oversampling in the training set there "
-                          f"are {num_bad} ({(num_bad / num_train_samples).round(decimals=4)}%) bad, "
-                          f"{num_med} ({(num_med / num_train_samples).round(decimals=4)}%) medium, "
-                          f"{num_good} ({(num_good / num_train_samples).round(decimals=4)}%) good samples. ")
-                    print(f"Before oversampling in the test set there "
-                          f"are {num_bad_te} bad, {num_med_te} medium, {num_good_te} good samples. ")
-                    baseline_pred = np.ones(testd.loc[:, 'label'].values.shape[0]) * 1
-                    print("The baseline metrics given an all majority prediction are:")
-                    b_acc, b_perc, b_rec, b_f1 = evaluate_class_predictions(
-                        prediction=baseline_pred,
-                        ground_truth=testd.loc[:, 'label'].values,
-                        labels=np.unique(traind.loc[:, 'label'].values),
-                        verbosity=True)
+            num_train_samples = traind.shape[0]
+            num_bad = (traind.loc[:, 'label'].values == 0).sum()
+            num_med = (traind.loc[:, 'label'].values == 1).sum()
+            num_good = (traind.loc[:, 'label'].values == 2).sum()
+            num_bad_te = (testd.loc[:, 'label'].values == 0).sum()
+            num_med_te = (testd.loc[:, 'label'].values == 1).sum()
+            num_good_te = (testd.loc[:, 'label'].values == 2).sum()
+            if verbosity:
+                print(f"In the training set there "
+                      f"are {num_bad} ({(num_bad / num_train_samples).round(decimals=4)}%) bad, "
+                      f"{num_med} ({(num_med / num_train_samples).round(decimals=4)}%) medium, "
+                      f"{num_good} ({(num_good / num_train_samples).round(decimals=4)}%) good samples. ")
+                print(f"In the test set there "
+                      f"are {num_bad_te} bad, {num_med_te} medium, {num_good_te} good samples. ")
+                baseline_pred = np.ones(testd.loc[:, 'label'].values.shape[0]) * 1
+                print("The baseline metrics given an all majority prediction are:")
+                b_acc, b_perc, b_rec, b_f1 = evaluate_class_predictions(
+                    prediction=baseline_pred,
+                    ground_truth=testd.loc[:, 'label'].values,
+                    labels=np.unique(traind.loc[:, 'label'].values),
+                    verbosity=True)
 
+            if over_sample is not None:
                 if over_sample == 'random':
                     ros = RandomOverSampler(sampling_strategy=calc_oversampling_strategy,
                                             shrinkage=None)
@@ -526,10 +526,12 @@ if __name__ == '__main__':
     # load_wine("../data/wine_data/winequality-red.csv", verbosity=True)
     # load_wine("../data/wine_data/winequality-white.csv", verbosity=True)
 
-    out_red = data_pipeline_redwine()
-    out_white = data_pipeline_whitewine()
+    out_red = data_pipeline_redwine(verbosity=True)
+    out_white = data_pipeline_whitewine(verbosity=True)
 
-    out_concat = data_pipeline_concat_red_white()
+    # out_concat = data_pipeline_concat_red_white()
+
+
 
 
     # fn_white = "../data/wine_data/winequality-white.csv"
