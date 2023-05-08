@@ -34,10 +34,11 @@ def evaluate_class_predictions(prediction: np.ndarray,
     if verbosity:
         for l in labels:
             print(f"Predicted label {l} for {(prediction == l).sum()} samples, {(ground_truth == l).sum()} are in gt.")
-        print(f"## Accuracy: {accuracy}")
-        print(f"## Precision: {precision}")
-        print(f"## Recall: {recall}")
-        print(f"## F1-score: {f1}")
+        np.set_printoptions(precision=4)
+        print(f"## Accuracy: {np.round(accuracy, decimals=4)}")
+        print(f"## Precision: {precision}, avg: {np.round(np.mean(precision), decimals=4)}")
+        print(f"## Recall: {recall}, avg: {np.round(np.mean(recall), decimals=4)}")
+        print(f"## F1-score: {f1}, avg: {np.round(np.mean(f1), decimals=4)}")
 
     return accuracy, precision, recall, f1
 
