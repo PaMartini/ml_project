@@ -60,7 +60,8 @@ def train_gaussian_naive_bayes(train_data,
     if verbosity:
         print(f"The class counts are {model.class_count_}, the resulting priors are {model.class_prior_}.")
     if test_data is not None:
-        print("### Test results naive bayes ###")
+        if verbosity:
+            print("### Test results naive bayes ###")
         x_test = test_data.drop(columns=[label_column]).values
         y_test = test_data.loc[:, label_column].values
 
@@ -71,7 +72,7 @@ def train_gaussian_naive_bayes(train_data,
         accuracy, precision, recall, f1 = evaluate_class_predictions(prediction=pred,
                                                                      ground_truth=y_test,
                                                                      labels=labels,
-                                                                     verbosity=True)
+                                                                     verbosity=verbosity)
         return model, accuracy, precision, recall, f1
 
     return model

@@ -69,7 +69,8 @@ def train_dt_classifier(train_data,
         print(model.feature_importances_)
 
     if test_data is not None:
-        print("### Test results decision tree ###")
+        if verbosity:
+            print("### Test results decision tree ###")
         x_test = test_data.drop(columns=[label_column]).values
         y_test = test_data.loc[:, label_column].values
 
@@ -80,7 +81,7 @@ def train_dt_classifier(train_data,
         accuracy, precision, recall, f1 = evaluate_class_predictions(prediction=pred,
                                                                      ground_truth=y_test,
                                                                      labels=labels,
-                                                                     verbosity=True)
+                                                                     verbosity=verbosity)
         return model, accuracy, precision, recall, f1
 
     return model
@@ -153,7 +154,8 @@ def train_random_forest(train_data,
             print(f"The out of bag error of the random forest classifier is {model.oob_score_}.")
 
     if test_data is not None:
-        print("### Test results random forest ###")
+        if verbosity:
+            print("### Test results random forest ###")
         x_test = test_data.drop(columns=[label_column]).values
         y_test = test_data.loc[:, label_column].values
 
@@ -164,7 +166,7 @@ def train_random_forest(train_data,
         accuracy, precision, recall, f1 = evaluate_class_predictions(prediction=pred,
                                                                      ground_truth=y_test,
                                                                      labels=labels,
-                                                                     verbosity=True)
+                                                                     verbosity=verbosity)
         return model, accuracy, precision, recall, f1
 
     return model
