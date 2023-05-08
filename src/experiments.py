@@ -106,8 +106,6 @@ def run_baseline_grid_search(colour: str = 'red',
             for key, val in metr_dict.items():  # Iterate over classifiers (key) and their metric dicts (val)
                 f1_dict[key][str(s) + '_' + str(o)] = val['f1'].mean()
 
-    print(f1_dict)
-
     if save_dir is not None:
         fp = save_dir + f"f1_dict_baseline.pickle"
         with open(fp, 'wb') as f:
