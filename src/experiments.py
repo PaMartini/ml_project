@@ -107,7 +107,7 @@ def run_baseline_grid_search(colour: str = 'red',
                 f1_dict[key][str(s) + '_' + str(o)] = val['f1'].mean()
 
     if save_dir is not None:
-        fp = save_dir + f"f1_dict_baseline.pickle"
+        fp = save_dir + f"f1_dict_baseline_{colour}.pickle"
         with open(fp, 'wb') as f:
             pickle.dump(f1_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
 
@@ -119,7 +119,7 @@ def run_baseline_grid_search(colour: str = 'red',
                   f"with corresponding F1 value {f1_dict[key][f1_max_dict[key]]}.")
 
     if save_dir is not None:
-        fp = save_dir + f"f1_max_dict_baseline.pickle"
+        fp = save_dir + f"f1_max_dict_baseline_{colour}.pickle"
         with open(fp, 'wb') as f:
             pickle.dump(f1_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
 
