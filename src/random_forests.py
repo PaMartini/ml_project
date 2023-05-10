@@ -70,7 +70,7 @@ def train_dt_classifier(train_data,
 
     if test_data is not None:
         if verbosity:
-            print("### Test results_2 decision tree ###")
+            print("### Test results decision tree ###")
         x_test = test_data.drop(columns=[label_column]).values
         y_test = test_data.loc[:, label_column].values
 
@@ -155,7 +155,7 @@ def train_random_forest(train_data,
 
     if test_data is not None:
         if verbosity:
-            print("### Test results_2 random forest ###")
+            print("### Test results random forest ###")
         x_test = test_data.drop(columns=[label_column]).values
         y_test = test_data.loc[:, label_column].values
 
