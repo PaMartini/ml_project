@@ -60,7 +60,7 @@ def train_svm_model(train_data: pd.DataFrame,
 
     if test_data is not None:
         if verbosity:
-            print("### Test results SVM ###")
+            print("### Test results_2 SVM ###")
         x_test = test_data.drop(columns=[label_column]).values
         y_test = test_data.loc[:, label_column].values
 
@@ -81,7 +81,7 @@ def run_parameter_tuning_svm(train_data: pd.DataFrame,
                              label_column: str = 'label') -> dict:
 
     config = [
-        {'C': [0.5, 1, 2, 10],
+        {'C': [0.5, 1, 2, 5],
          'kernel': ['linear', 'poly', 'rbf', 'sigmoid'],
          'degree': [3, 4, 6, 10],  # Degree of the polynomial kernel function.
          'gamma': ['scale', 'auto'],  # Kernel coefficient for ‘rbf’, ‘poly’ and ‘sigmoid’.
