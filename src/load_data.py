@@ -449,8 +449,8 @@ def preprocess_wine(data: pd.DataFrame,
 def data_pipeline_redwine(shuffle: bool = True,
                           preserve_class_dist: bool = True,
                           val_and_test: bool = False,
-                          over_sample: str = None,
-                          scaling: str = 'standardize',
+                          over_sample: Union[str, None] = None,
+                          scaling: Union[str, None] = None,
                           pca_dim: int = -1,
                           labelling: str = 'bmg',
                           verbosity: bool = False) -> Tuple[pd.DataFrame, ...]:
@@ -474,8 +474,8 @@ def data_pipeline_redwine(shuffle: bool = True,
 def data_pipeline_whitewine(shuffle: bool = True,
                             preserve_class_dist: bool = True,
                             val_and_test: bool = False,
-                            over_sample: str = None,
-                            scaling: str = 'standardize',
+                            over_sample: Union[str, None] = None,
+                            scaling: Union[str, None] = None,
                             pca_dim: int = -1,
                             labelling: str = 'bmg',
                             verbosity: bool = False) -> Tuple[pd.DataFrame, ...]:
@@ -499,8 +499,8 @@ def data_pipeline_whitewine(shuffle: bool = True,
 def data_pipeline_concat_red_white(shuffle: bool = True,
                                    preserve_class_dist: bool = True,
                                    val_and_test: bool = False,
-                                   over_sample: str = None,
-                                   scaling: str = 'standardize',
+                                   over_sample: Union[str, None] = None,
+                                   scaling: Union[str, None] = None,
                                    pca_dim: int = -1,
                                    labelling: str = 'bmg',
                                    verbosity: bool = False) -> Tuple[pd.DataFrame, ...]:
@@ -526,9 +526,12 @@ if __name__ == '__main__':
     # load_wine("../data/wine_data/winequality-red.csv", verbosity=True)
     # load_wine("../data/wine_data/winequality-white.csv", verbosity=True)
 
-    out_red = data_pipeline_redwine(verbosity=True)
-    out_white = data_pipeline_whitewine(verbosity=True)
-
+    out_red = data_pipeline_redwine(verbosity=True, scaling='min_max_norm', pca_dim=-1)[0]
+    plt.scatter(x=out_red.values[:, 0], y=out_red.values[:, 1], c=out_red.values[:, 12])
+    plt.show()
+    out_white = data_pipeline_whitewine(verbosity=True, scaling='min_max_norm', pca_dim=-1)[0]
+    plt.scatter(x=out_white.values[:, 0], y=out_white.values[:, 1], c=out_white.values[:, 12])
+    plt.show()
     # out_concat = data_pipeline_concat_red_white()
 
 
