@@ -8,10 +8,18 @@ from svm import *
 
 
 def make_dict_entries(dict_: dict, key: str, idx: int, metrics: Tuple) -> dict:
-    dict_[key]['acc'][idx] = metrics[0]
-    dict_[key]['prec'][idx, :] = metrics[1]
-    dict_[key]['rec'][idx, :] = metrics[2]
-    dict_[key]['f1'][idx, :] = metrics[3]
+    """
+    Auxiliary function for making a dictionary entry in the metrics dict.
+    :param dict_: metrics_dict
+    :param key: -
+    :param idx: -
+    :param metrics: -
+    :return: -
+    """
+    dict_[key]['acc'][idx] = metrics[0].copy()
+    dict_[key]['prec'][idx, :] = metrics[1].copy()
+    dict_[key]['rec'][idx, :] = metrics[2].copy()
+    dict_[key]['f1'][idx, :] = metrics[3].copy()
     return dict_
 
 
@@ -21,22 +29,17 @@ def generate_baseline_results(colour: str = 'red',
                               over_sample: Union[None, str] = None,
                               save_dir: Union[None, str] = None,
                               verbosity: bool = False) -> dict:
+    """
+    Function for producing baseline results for the scaling and oversampling method specified in input.
+    :param colour: Which data set to use, 'red' or 'white'.
+    :param num_trials: Number of trials to perform.
+    :param scaling: Which scaling method to use.
+    :param over_sample: Which oversampling method to use.
+    :param save_dir: Directory to save results to.
+    :param verbosity: Whether to print results, or not.
+    :return: Dictionary with calculated metrics. Has structure {'classifier': {'metric': value array}}.
+    """
     assert colour in {'red', 'white', 'red_white'}, "Colour must be 'red', 'white' or 'red_white'."
-    if colour == 'red':
-        traind, testd = data_pipeline_redwine(verbosity=False, scaling=scaling, over_sample=over_sample)
-        # Delete quality columns in data frames:
-        traind = traind.drop(columns=['quality'])
-        testd = testd.drop(columns=['quality'])
-    elif colour == 'white':
-        traind, testd = data_pipeline_whitewine(verbosity=False, scaling=scaling, over_sample=over_sample)
-        # Delete quality columns in data frames:
-        traind = traind.drop(columns=['quality'])
-        testd = testd.drop(columns=['quality'])
-    elif colour == 'red_white':
-        traind, testd = data_pipeline_concat_red_white(verbosity=False, scaling=scaling, over_sample=over_sample)
-        # Delete quality columns in data frames:
-        traind = traind.drop(columns=['quality'])
-        testd = testd.drop(columns=['quality'])
 
     dummy_dict = {'acc': np.zeros(num_trials),
                   'prec': np.zeros((num_trials, 3)),
@@ -46,6 +49,22 @@ def generate_baseline_results(colour: str = 'red',
                     'rf': deepcopy(dummy_dict), 'nb': deepcopy(dummy_dict)}
 
     for i in tqdm(range(num_trials)):
+        if colour == 'red':
+            traind, testd = data_pipeline_redwine(verbosity=False, scaling=scaling, over_sample=over_sample)
+            # Delete quality columns in data frames:
+            traind = traind.drop(columns=['quality'])
+            testd = testd.drop(columns=['quality'])
+        elif colour == 'white':
+            traind, testd = data_pipeline_whitewine(verbosity=False, scaling=scaling, over_sample=over_sample)
+            # Delete quality columns in data frames:
+            traind = traind.drop(columns=['quality'])
+            testd = testd.drop(columns=['quality'])
+        elif colour == 'red_white':
+            traind, testd = data_pipeline_concat_red_white(verbosity=False, scaling=scaling, over_sample=over_sample)
+            # Delete quality columns in data frames:
+            traind = traind.drop(columns=['quality'])
+            testd = testd.drop(columns=['quality'])
+
         if scaling is not None:  # SVM intractable if no scaling is used
             metrics = train_svm_model(train_data=traind, label_column='label',
                                       config=None, test_data=testd, verbosity=False)[1:]
@@ -90,6 +109,15 @@ def run_baseline_grid_search(colour: str = 'red',
                              num_trials: int = 100,
                              save_dir: Union[None, str] = None,
                              verbosity: bool = False) -> Tuple[dict, dict]:
+    """
+    Function for running the grid-search over the scaling and oversampling methods. Saves results into dictionaries.
+    :param colour: Which data set to use, 'red' or 'white'.
+    :param num_trials: Number of trials to perform.
+    :param save_dir: Directory to save results to.
+    :param verbosity: Whether to print results, or not.
+    :return: Dictionaries with structures {'classifier': 'optimal scaling and oversampling method combination'},
+    {'classifier': {'scaling and oversampling method combination': F_1 value}}
+    """
     f1_dict = {}
     for s in [None, 'standardize', 'min_max_norm']:
         for o in [None, 'random', 'smote']:
@@ -121,13 +149,14 @@ def run_baseline_grid_search(colour: str = 'red',
     if save_dir is not None:
         fp = save_dir + f"f1_max_dict_baseline_{colour}.pickle"
         with open(fp, 'wb') as f:
-            pickle.dump(f1_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(f1_max_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
 
     return f1_max_dict, f1_dict
 
 
 if __name__ == '__main__':
-    # generate_baseline_results(colour='white', num_trials=100, scaling='min_max_norm', over_sample=None)
-    run_baseline_grid_search(colour='red', num_trials=100, save_dir='../results/', verbosity=True)
+    # generate_baseline_results(colour='red', num_trials=100,
+    #                           scaling='standardize', over_sample='random', verbosity=True)
+    run_baseline_grid_search(colour='white', num_trials=100, save_dir='../results/', verbosity=True)
 
     print('done')
