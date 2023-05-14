@@ -220,19 +220,19 @@ def run_parameter_tuning_rf(train_data: pd.DataFrame,
                             label_column: str = 'label') -> dict:
 
     config = [
-        {'criterion': ['gini', 'entropy', 'log_loss'],
-         'max_depth': [None, 7, 11],
+        {'criterion': ['gini', 'entropy'],
+         'max_depth': [None, 11, 22],
          'min_samples_split': [2, 4, 8],
          'min_samples_leaf': [1, 5, 10],
          'min_weight_fraction_leaf': [0],
-         'max_features': [None],
+         'max_features': [11, 6, 9],
          'random_state': [None],
-         'max_leaf_nodes': [None, 15, 20, 30],
+         'max_leaf_nodes': [None],
          'min_impurity_decrease': [0],
          'class_weight': [None, 'balanced'],
          'ccp_alpha': [0],
          # Parameters specific to random forest classifier
-         'n_estimators': [50, 100, 150],
+         'n_estimators': [75, 100, 125],
          'bootstrap': [True],
          'oob_score': [True],
          'n_jobs': [None],
@@ -247,7 +247,7 @@ def run_parameter_tuning_rf(train_data: pd.DataFrame,
                                            label_column=label_column,
                                            verbosity=True,
                                            save=True,
-                                           filename='../configurations/best_rf_config.pickle')
+                                           filename='../results/best_rf_config.pickle')
 
     return best_config
 
@@ -258,29 +258,28 @@ if __name__ == '__main__':
     traind = traind.drop(columns=['quality'])
     testd = testd.drop(columns=['quality'])
 
-    run_parameter_tuning_dt(train_data=traind, label_column='label')
-    run_parameter_tuning_rf(train_data=traind, label_column='label')
+    # run_parameter_tuning_dt(train_data=traind, label_column='label')
+    # run_parameter_tuning_rf(train_data=traind, label_column='label')
 
     # Train model with best found configuration
-    with open('../configurations/best_dt_config.pickle', 'rb') as f:
-        best_dt_param = pickle.load(f)
+    # with open('../configurations/best_dt_config.pickle', 'rb') as f:
+    #     best_dt_param = pickle.load(f)
 
-    with open('../configurations/best_rf_config.pickle', 'rb') as f:
+    with open('../results/best_rf_config.pickle', 'rb') as f:
         best_rf_param = pickle.load(f)
 
-    print(best_dt_param)
+    # print(best_dt_param)
     print(best_rf_param)
 
-    train_dt_classifier(train_data=traind,
-                        label_column='label',
-                        config=best_dt_param,
-                        test=True,
-                        test_data=testd,
-                        verbosity=False)
+    # train_dt_classifier(train_data=traind,
+    #                     label_column='label',
+    #                     config=best_dt_param,
+    #                     test=True,
+    #                     test_data=testd,
+    #                     verbosity=False)
 
     train_random_forest(train_data=traind,
                         label_column='label',
                         config=best_rf_param,
-                        test=True,
                         test_data=testd,
                         verbosity=True)

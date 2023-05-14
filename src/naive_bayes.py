@@ -92,7 +92,7 @@ def run_parameter_tuning_nb(train_data: pd.DataFrame,
                                            label_column=label_column,
                                            verbosity=True,
                                            save=True,
-                                           filename='../configurations/best_nb_config.pickle')
+                                           filename='../results/best_nb_config.pickle')
 
     return best_config
 
@@ -108,7 +108,7 @@ if __name__ == '__main__':
 
     run_parameter_tuning_nb(train_data=traind, label_column='label')
 
-    with open('../configurations/best_nb_config.pickle', 'rb') as f:
+    with open('../results/best_nb_config.pickle', 'rb') as f:
         best_nb_param = pickle.load(f)
 
     print(best_nb_param)
@@ -116,7 +116,6 @@ if __name__ == '__main__':
     train_gaussian_naive_bayes(train_data=traind,
                                label_column='label',
                                config=best_nb_param,
-                               test=True,
                                test_data=testd,
                                verbosity=True)
 

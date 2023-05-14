@@ -99,7 +99,7 @@ def run_parameter_tuning_svm(train_data: pd.DataFrame,
                                            label_column=label_column,
                                            verbosity=True,
                                            save=True,
-                                           filename='../configurations/best_svm_config.pickle')
+                                           filename='../results/best_svm_config.pickle')
 
     return best_config
 
@@ -113,20 +113,18 @@ if __name__ == '__main__':
     # run_parameter_tuning_svm(train_data=traind, label_column='label')
 
     # Train model with best found configuration
-    with open('../configurations/best_svm_config.pickle', 'rb') as f:
+    with open('../results/best_svm_config.pickle', 'rb') as f:
         best_svm_param = pickle.load(f)
 
     train_svm_model(train_data=traind,
                     label_column='label',
                     config=best_svm_param,
-                    test=True,
                     test_data=testd,
                     verbosity=True)
 
     train_svm_model(train_data=traind,
                     label_column='label',
                     config=None,
-                    test=True,
                     test_data=testd,
                     verbosity=True)
 
