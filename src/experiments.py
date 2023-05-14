@@ -154,9 +154,44 @@ def run_baseline_grid_search(colour: str = 'red',
     return f1_max_dict, f1_dict
 
 
+def run_parameter_tuning_svm_rf_red():
+    traind, testd = data_pipeline_redwine(verbosity=False, scaling='min_max_norm', over_sample='smote')
+    # Delete quality columns in data frames:
+    traind = traind.drop(columns=['quality'])
+    testd = testd.drop(columns=['quality'])
+    run_parameter_tuning_svm(train_data=traind, label_column='label')
+
+    with open('../configurations/best_svm_config.pickle', 'rb') as f:
+        best_svm_param = pickle.load(f)
+
+    train_svm_model(train_data=traind,
+                    label_column='label',
+                    config=best_svm_param,
+                    test_data=testd,
+                    verbosity=True)
+
+    traind, testd = data_pipeline_redwine(verbosity=False, scaling=None, over_sample='smote')
+    # Delete quality columns in data frames:
+    traind = traind.drop(columns=['quality'])
+    testd = testd.drop(columns=['quality'])
+    run_parameter_tuning_svm(train_data=traind, label_column='label')
+
+    with open('../configurations/best_rf_config.pickle', 'rb') as f:
+        best_rf_param = pickle.load(f)
+
+    train_random_forest(train_data=traind,
+                        label_column='label',
+                        config=best_rf_param,
+                        test_data=testd,
+                        verbosity=True)
+
+
+
 if __name__ == '__main__':
     # generate_baseline_results(colour='red', num_trials=100,
     #                           scaling='standardize', over_sample='random', verbosity=True)
-    run_baseline_grid_search(colour='white', num_trials=100, save_dir='../results/', verbosity=True)
+    # run_baseline_grid_search(colour='white', num_trials=100, save_dir='../results/', verbosity=True)
+
+    run_parameter_tuning_svm_rf_red()
 
     print('done')
