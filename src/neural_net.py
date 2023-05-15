@@ -12,6 +12,7 @@ from load_data import *
 from evaluation import *
 
 
+# Dataset ##############################################################################################################
 class WineDataset(Dataset):
     """
     Dataset class for the wine quality dataset from the UCI ml repo.
@@ -85,6 +86,7 @@ def get_data_loaders_wine_data(val_and_test: bool = False,
         return train_loader, test_loader, labels
 
 
+# Model ################################################################################################################
 class WineNet(torch.nn.Module):
     def __init__(self, in_size: int = 11, out_size: int = 1):
         super().__init__()
@@ -119,10 +121,16 @@ class WineNet(torch.nn.Module):
         # x = self.last_activation(x)
         return x
 
-
-def save_ckp(model_state: dict, checkpoint_dir: str = "../checkpoints/") -> None:
+# Auxiliary functions ##################################################################################################
+def save_ckp(state_dict: dict, checkpoint_dir: str = "../checkpoints/") -> None:
+    """
+    Function for saving a checkpoint.
+    :param state_dict: Dictionary with the model and optimizer state.
+    :param checkpoint_dir: Directory where to store the checkpoint file.
+    :return:
+    """
     fp = os.path.join(checkpoint_dir, 'model_' + datetime.now().strftime("%Y%m%d-%H%M%S") + '.pt')
-    torch.save(model_state, fp)
+    torch.save(state_dict, fp)
     print(f'Saved model.')
 
 
@@ -131,12 +139,80 @@ def load_ckp(ckp_name: str,
              optimizer: Type[torch.optim.Optimizer] = None,
              checkpoint_dir: str = "../checkpoints/",
              ) -> Tuple[Any, Any, Any]:
-
+    """
+    Function for loading a saved checkpoint of a model and optimizer.
+    :param ckp_name: Name of checkpoint file.
+    :param model: Model for which model state checkpoint is loaded.
+    :param optimizer: Optimizer for which optimizer state checkpoint is loaded.
+    :param checkpoint_dir: Directory where checkpoint file is stored.
+    :return:
+    """
     ckp = torch.load(os.path.join(checkpoint_dir, ckp_name))
     model.load_state_dict(ckp['state_dict'])
     if optimizer is not None:
         optimizer.load_state_dict(ckp['optimizer'])
     return model, optimizer, ckp['epoch']
+
+
+def plot_loss(train_loss: np.ndarray, val_loss: np.ndarray):
+    """
+    Function for plotting the train and validation loss.
+    :param train_loss: Array with train loss as entries. shape: (num epochs, )
+    :param val_loss: Array with val loss as entries. shape: (num epochs, )
+    :return: None
+    """
+    plt.plot(np.arange(len(train_loss)), train_loss, label='Training loss')
+    plt.plot(np.arange(len(val_loss)), val_loss, label='Validation loss')
+    plt.yscale('log')
+    plt.legend()
+    # plt.savefig('losses_plot.png')
+    plt.show()
+
+
+def plot_metrics(metrics_dict: dict, single_plots: bool = False) -> None:
+    """
+    Function for plotting the performance metrics of calculated during the training of the model.
+    :param metrics_dict: Dictionary with the metrics for each epoch stored in numpy arrays.
+    :param single_plots: Whether to produce a single plot for each of the metrics.
+    :return: None
+    """
+    # Plot metrics for individual classes.
+    for i, key in enumerate(metrics_dict):
+        if key == 'accuracy':
+            labels = key
+        else:
+            labels = np.array([key + " " + str(j) for j in range(3)])
+        plt.plot(np.arange(len(metrics_dict[key])), metrics_dict[key], label=labels)
+        if single_plots:
+            plt.legend()
+            plt.show()
+    if not single_plots:
+        plt.legend()
+        plt.show()
+
+    # Plot metrics averaged over classes.
+    for key in metrics_dict:
+        if key == 'accuracy':
+            plt.plot(np.arange(len(metrics_dict[key])), metrics_dict[key], label=key)
+        else:
+            plt.plot(np.arange(len(metrics_dict[key])), metrics_dict[key].sum(axis=1) / 3, label=key)
+    plt.legend()
+    plt.show()
+
+
+def check_model():
+    """
+    Function for checking the structure of the WineNet model.
+    :return: None
+    """
+    model = WineNet()
+    summary(model, input_size=(11,))
+
+
+def custom_loss(model_out: torch.Tensor, labels: torch.Tensor):
+    # Todo
+
+    return
 
 
 def train_loop(train_loader: DataLoader,
@@ -285,46 +361,7 @@ def run_training(n_epochs: int = 20,
         evaluate_class_predictions(prediction=predictions, ground_truth=val_gt_labels, labels=labels, verbosity=True)
 
 
-def plot_loss(train_loss: np.ndarray, val_loss: np.ndarray):
-    plt.plot(np.arange(len(train_loss)), train_loss, label='Training loss')
-    plt.plot(np.arange(len(val_loss)), val_loss, label='Validation loss')
-    plt.yscale('log')
-    plt.legend()
-    # plt.savefig('losses_plot.png')
-    plt.show()
-
-
-def plot_metrics(metrics_dict: dict, single_plots: bool = False) -> None:
-    """
-    Function for plotting the performance metrics of calculated during the training of the model.
-    :param metrics_dict: Dictionary with the metrics for each epoch stored in numpy arrays.
-    :param single_plots: Whether to produce a single plot for each of the metrics.
-    :return: None
-    """
-    # Plot metrics for individual classes.
-    for i, key in enumerate(metrics_dict):
-        if key == 'accuracy':
-            labels = key
-        else:
-            labels = np.array([key + " " + str(j) for j in range(3)])
-        plt.plot(np.arange(len(metrics_dict[key])), metrics_dict[key], label=labels)
-        if single_plots:
-            plt.legend()
-            plt.show()
-    if not single_plots:
-        plt.legend()
-        plt.show()
-
-    # Plot metrics averaged over classes.
-    for key in metrics_dict:
-        if key == 'accuracy':
-            plt.plot(np.arange(len(metrics_dict[key])), metrics_dict[key], label=key)
-        else:
-            plt.plot(np.arange(len(metrics_dict[key])), metrics_dict[key].sum(axis=1) / 3, label=key)
-    plt.legend()
-    plt.show()
-
-
+# Validation functionalities ###########################################################################################
 def load_test_model(model_name: str, checkpoint_dir: str = "../checkpoints/") -> None:
     """
     Function for loading a saved model and testing it on a validation set.
@@ -351,13 +388,9 @@ def load_test_model(model_name: str, checkpoint_dir: str = "../checkpoints/") ->
     evaluate_class_predictions(prediction=predictions, ground_truth=val_gt_labels, labels=labels, verbosity=True)
 
 
-def check_model():
-    model = WineNet()
-    summary(model, input_size=(11,))
-
-
 if __name__ == '__main__':
-    run_training(n_epochs=100, test=True, plot_losses=True, save_losses=False, plot_save_metrics=True)
+    run_training(n_epochs=300, test=True, plot_losses=True, save_losses=False, plot_save_metrics=True)
     # load_test_model(model_name='model_20230502-101737.pt')
+
     print('done')
 
