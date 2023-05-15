@@ -78,7 +78,8 @@ def train_svm_model(train_data: pd.DataFrame,
 
 
 def run_parameter_tuning_svm(train_data: pd.DataFrame,
-                             label_column: str = 'label') -> dict:
+                             label_column: str = 'label',
+                             file_name: str = '../configurations/white_best_svm_config.pickle') -> dict:
 
     config = [
         {'C': [0.5, 1, 2, 5],
@@ -86,9 +87,9 @@ def run_parameter_tuning_svm(train_data: pd.DataFrame,
          'degree': [3, 4, 6, 10],  # Degree of the polynomial kernel function.
          'gamma': ['scale', 'auto'],  # Kernel coefficient for ‘rbf’, ‘poly’ and ‘sigmoid’.
          'coef0': [0, 0.1, 1],  # Independent term in kernel function. It is only significant in ‘poly’ and ‘sigmoid’.
-         'shrinking': [True, False],  # Whether to use the shrinking heuristic.
+         'shrinking': [False],  # Whether to use the shrinking heuristic.
          'probability': [False],
-         'tol': [0.001, 0.0001],  # Tolerance for stopping criterion.
+         'tol': [0.001],  # Tolerance for stopping criterion.
          'max_iter': [-1],
          'class_weight': [None, 'balanced']}
     ]
@@ -99,7 +100,7 @@ def run_parameter_tuning_svm(train_data: pd.DataFrame,
                                            label_column=label_column,
                                            verbosity=True,
                                            save=True,
-                                           filename='../results/best_svm_config.pickle')
+                                           filename=file_name)
 
     return best_config
 
