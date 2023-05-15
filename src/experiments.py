@@ -159,31 +159,31 @@ def run_parameter_tuning_svm_rf_red():
     # Delete quality columns in data frames:
     traind = traind.drop(columns=['quality'])
     testd = testd.drop(columns=['quality'])
-    run_parameter_tuning_svm(train_data=traind, label_column='label')
-
-    with open('../configurations/best_svm_config.pickle', 'rb') as f:
-        best_svm_param = pickle.load(f)
-
-    train_svm_model(train_data=traind,
-                    label_column='label',
-                    config=best_svm_param,
-                    test_data=testd,
-                    verbosity=True)
+    run_parameter_tuning_svm(train_data=traind, label_column='label',
+                             file_name='../configurations/red_best_svm_config.pickle')
 
     traind, testd = data_pipeline_redwine(verbosity=False, scaling=None, over_sample='smote')
     # Delete quality columns in data frames:
     traind = traind.drop(columns=['quality'])
     testd = testd.drop(columns=['quality'])
-    run_parameter_tuning_svm(train_data=traind, label_column='label')
+    run_parameter_tuning_rf(train_data=traind, label_column='label',
+                            file_name='../configurations/red_best_rf_config.pickle')
 
-    with open('../configurations/best_rf_config.pickle', 'rb') as f:
-        best_rf_param = pickle.load(f)
 
-    train_random_forest(train_data=traind,
-                        label_column='label',
-                        config=best_rf_param,
-                        test_data=testd,
-                        verbosity=True)
+def run_parameter_tuning_svm_rf_white():
+    traind, testd = data_pipeline_whitewine(verbosity=False, scaling='standardize', over_sample='smote')
+    # Delete quality columns in data frames:
+    traind = traind.drop(columns=['quality'])
+    testd = testd.drop(columns=['quality'])
+    run_parameter_tuning_svm(train_data=traind, label_column='label',
+                             file_name='../configurations/white_best_svm_config.pickle')
+
+    traind, testd = data_pipeline_whitewine(verbosity=False, scaling=None, over_sample='random')
+    # Delete quality columns in data frames:
+    traind = traind.drop(columns=['quality'])
+    testd = testd.drop(columns=['quality'])
+    run_parameter_tuning_rf(train_data=traind, label_column='label',
+                            file_name='../configurations/white_best_rf_config.pickle')
 
 
 
