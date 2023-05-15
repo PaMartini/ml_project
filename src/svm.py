@@ -79,7 +79,7 @@ def train_svm_model(train_data: pd.DataFrame,
 
 def run_parameter_tuning_svm(train_data: pd.DataFrame,
                              label_column: str = 'label',
-                             file_name: str = '../configurations/white_best_svm_config.pickle') -> dict:
+                             file_name: str = '../configurations/best_svm_config.pickle') -> dict:
 
     config = [
         {'C': [0.5, 1, 2, 5],
