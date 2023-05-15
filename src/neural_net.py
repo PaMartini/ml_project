@@ -41,17 +41,27 @@ class WineDataset(Dataset):
         return len(self.df)
 
 
-def get_data_loaders_wine_data(val_and_test: bool = False,
+def get_data_loaders_wine_data(colour: str = 'red',
+                               val_and_test: bool = False,
                                batch_size: int = 1,
                                label_column: str = 'label',
                                drop_column: list[str, ...] = None,
                                shuffle: bool = False) \
         -> Union[Tuple[DataLoader, DataLoader, DataLoader, np.ndarray], Tuple[DataLoader, DataLoader, np.ndarray]]:
 
+    assert colour in {'red', 'white', 'red_white'}, "Parameter 'colour' must be 'red', 'white' or 'red_white'."
+
     if drop_column is None:
         drop_column = ['quality']
+
     if val_and_test:
-        traindf, valdf, testdf = data_pipeline_redwine(val_and_test=val_and_test)
+        if colour == 'red':
+            traindf, valdf, testdf = data_pipeline_redwine(val_and_test=val_and_test)
+        elif colour == 'white':
+            traindf, valdf, testdf = data_pipeline_whitewine(val_and_test=val_and_test)
+        elif colour == 'red_white':
+            traindf, valdf, testdf = data_pipeline_concat_red_white(val_and_test=val_and_test)
+
         traindf = traindf.drop(columns=drop_column)
         valdf = testdf.drop(columns=drop_column)
         testdf = testdf.drop(columns=drop_column)
@@ -71,7 +81,13 @@ def get_data_loaders_wine_data(val_and_test: bool = False,
         return train_loader, val_loader, test_loader, labels
 
     else:
-        traindf, testdf = data_pipeline_redwine(val_and_test=val_and_test)
+        if colour == 'red':
+            traindf, testdf = data_pipeline_redwine(val_and_test=val_and_test)
+        elif colour == 'white':
+            traindf, testdf = data_pipeline_whitewine(val_and_test=val_and_test)
+        elif colour == 'red_white':
+            traindf, testdf = data_pipeline_concat_red_white(val_and_test=val_and_test)
+
         traindf = traindf.drop(columns=drop_column)
         testdf = testdf.drop(columns=drop_column)
 
@@ -120,6 +136,7 @@ class WineNet(torch.nn.Module):
         x = self.net2(x)
         # x = self.last_activation(x)
         return x
+
 
 # Auxiliary functions ##################################################################################################
 def save_ckp(state_dict: dict, checkpoint_dir: str = "../checkpoints/") -> None:
@@ -215,6 +232,13 @@ def custom_loss(model_out: torch.Tensor, labels: torch.Tensor):
     return
 
 
+def calc_class_weights(train_loader):
+    # Todo
+
+    return
+
+
+# Training #############################################################################################################
 def train_loop(train_loader: DataLoader,
                val_loader: DataLoader,
                labels: np.ndarray,
@@ -310,7 +334,8 @@ def run_training(n_epochs: int = 20,
                  save_losses: bool = False,
                  plot_save_metrics: bool = False):
 
-    train_loader, val_loader, labels = get_data_loaders_wine_data(val_and_test=False,
+    train_loader, val_loader, labels = get_data_loaders_wine_data(colour='white',
+                                                                  val_and_test=False,
                                                                   batch_size=20,
                                                                   label_column='label',
                                                                   drop_column=['quality'],
@@ -389,7 +414,7 @@ def load_test_model(model_name: str, checkpoint_dir: str = "../checkpoints/") ->
 
 
 if __name__ == '__main__':
-    run_training(n_epochs=300, test=True, plot_losses=True, save_losses=False, plot_save_metrics=True)
+    run_training(n_epochs=400, test=True, plot_losses=True, save_losses=False, plot_save_metrics=True)
     # load_test_model(model_name='model_20230502-101737.pt')
 
     print('done')
