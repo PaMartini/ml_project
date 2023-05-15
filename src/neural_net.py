@@ -294,7 +294,7 @@ def train_loop(train_loader: DataLoader,
         model_state = {'state_dict': model.state_dict(),
                        'optimizer': optimizer.state_dict(),
                        'epoch': num_epochs}
-        save_ckp(model_state=model_state, checkpoint_dir=checkpoint_dir)
+        save_ckp(state_dict=model_state, checkpoint_dir=checkpoint_dir)
 
     if track_metrics:
         metrics_dict = {'accuracy': accuracy, 'precision': precision, 'recall': recall, 'f1': f1}
