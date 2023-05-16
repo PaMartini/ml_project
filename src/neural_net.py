@@ -44,6 +44,8 @@ class WineDataset(Dataset):
 
 def get_data_loaders_wine_data(colour: str = 'red',
                                val_and_test: bool = False,
+                               scaling: Tuple[None, str] = None,
+                               over_sample: Tuple[None, str] = None,
                                batch_size: int = 1,
                                label_column: str = 'label',
                                drop_column: list[str, ...] = None,
@@ -57,11 +59,14 @@ def get_data_loaders_wine_data(colour: str = 'red',
 
     if val_and_test:
         if colour == 'red':
-            traindf, valdf, testdf = data_pipeline_redwine(val_and_test=val_and_test)
+            traindf, valdf, testdf = data_pipeline_redwine(val_and_test=val_and_test,
+                                                           scaling=scaling, over_sample=over_sample)
         elif colour == 'white':
-            traindf, valdf, testdf = data_pipeline_whitewine(val_and_test=val_and_test)
+            traindf, valdf, testdf = data_pipeline_whitewine(val_and_test=val_and_test,
+                                                             scaling=scaling, over_sample=over_sample)
         elif colour == 'red_white':
-            traindf, valdf, testdf = data_pipeline_concat_red_white(val_and_test=val_and_test)
+            traindf, valdf, testdf = data_pipeline_concat_red_white(val_and_test=val_and_test,
+                                                                    scaling=scaling, over_sample=over_sample)
 
         traindf = traindf.drop(columns=drop_column)
         valdf = testdf.drop(columns=drop_column)
@@ -83,11 +88,14 @@ def get_data_loaders_wine_data(colour: str = 'red',
 
     else:
         if colour == 'red':
-            traindf, testdf = data_pipeline_redwine(val_and_test=val_and_test)
+            traindf, testdf = data_pipeline_redwine(val_and_test=val_and_test,
+                                                    scaling=scaling, over_sample=over_sample)
         elif colour == 'white':
-            traindf, testdf = data_pipeline_whitewine(val_and_test=val_and_test)
+            traindf, testdf = data_pipeline_whitewine(val_and_test=val_and_test,
+                                                      scaling=scaling, over_sample=over_sample)
         elif colour == 'red_white':
-            traindf, testdf = data_pipeline_concat_red_white(val_and_test=val_and_test)
+            traindf, testdf = data_pipeline_concat_red_white(val_and_test=val_and_test,
+                                                             scaling=scaling, over_sample=over_sample)
 
         traindf = traindf.drop(columns=drop_column)
         testdf = testdf.drop(columns=drop_column)
@@ -358,6 +366,8 @@ def run_training(n_epochs: int = 20,
 
     train_loader, val_loader, labels = get_data_loaders_wine_data(colour='red',
                                                                   val_and_test=False,
+                                                                  scaling=None,
+                                                                  over_sample=None,
                                                                   batch_size=20,
                                                                   label_column='label',
                                                                   drop_column=['quality'],
