@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 from torchinfo import summary
+from monai.losses import FocalLoss
 from tqdm import tqdm
 from datetime import datetime
 import os
@@ -232,10 +233,31 @@ def custom_loss(model_out: torch.Tensor, labels: torch.Tensor):
     return
 
 
-def calc_class_weights(train_loader):
-    # Todo
+def calc_class_weights(train_loader, verbosity: bool = False) -> torch.Tensor:
+    """
+    Function for calculating class weights to balance the classes inversely to the number of samples belonging to them.
+    :param train_loader: Train loader
+    :param verbosity: Whether to print the calculated class weights, or not.
+    :return: Array with the class weights.
+    """
+    if verbosity:
+        print("## Calculating class weights ...")
+    for i, data in tqdm(enumerate(train_loader), total=len(train_loader)):
+        y = data[1].to(torch.float32)
+        if i == 0:
+            class_counts = y.sum(axis=0)
+            batch_size = y.shape[0]
+        class_counts += y.sum(axis=0)
 
-    return
+    n_samples = batch_size * len(train_loader)
+    n_classes = class_counts.shape[0]
+
+    class_weights = n_samples * torch.ones(class_counts.shape[0]) / (n_classes * class_counts)
+
+    if verbosity:
+        print(f"The calculated class weights are {class_weights}.")
+
+    return class_weights
 
 
 # Training #############################################################################################################
@@ -334,7 +356,7 @@ def run_training(n_epochs: int = 20,
                  save_losses: bool = False,
                  plot_save_metrics: bool = False):
 
-    train_loader, val_loader, labels = get_data_loaders_wine_data(colour='white',
+    train_loader, val_loader, labels = get_data_loaders_wine_data(colour='red',
                                                                   val_and_test=False,
                                                                   batch_size=20,
                                                                   label_column='label',
@@ -345,8 +367,12 @@ def run_training(n_epochs: int = 20,
     model = WineNet(in_size=11, out_size=num_labels)
     # Initialize optimizer.
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
+    # Calculate class weights
+    class_weights = calc_class_weights(train_loader=train_loader, verbosity=True)
+    # class_weights = torch.tensor([48/100, 2/100, 48/100])
     # Initialize loss function
-    loss_fct = nn.CrossEntropyLoss(weight=torch.tensor([48/100, 2/100, 48/100]), reduction='mean', label_smoothing=0)
+    # loss_fct = nn.CrossEntropyLoss(weight=class_weights, reduction='mean', label_smoothing=0)
+    loss_fct = FocalLoss(include_background=True, gamma=6.0, weight=class_weights, reduction='mean')
     # loss_fct = nn.CrossEntropyLoss(reduction='mean', label_smoothing=0)
 
     trained_model, train_losses, val_losses, metrics_dict = train_loop(train_loader=train_loader,
@@ -414,7 +440,7 @@ def load_test_model(model_name: str, checkpoint_dir: str = "../checkpoints/") ->
 
 
 if __name__ == '__main__':
-    run_training(n_epochs=400, test=True, plot_losses=True, save_losses=False, plot_save_metrics=True)
+    run_training(n_epochs=200, test=True, plot_losses=True, save_losses=False, plot_save_metrics=True)
     # load_test_model(model_name='model_20230502-101737.pt')
 
     print('done')
