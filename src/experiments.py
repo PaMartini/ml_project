@@ -186,12 +186,92 @@ def run_parameter_tuning_svm_rf_white():
                             file_name='../configurations/white_best_rf_config.pickle')
 
 
+def generate_improved_results(colour: str = 'red',
+                              num_trials: int = 100,
+                              save_dir: Union[None, str] = None,
+                              verbosity: bool = False) -> dict:
+
+    dummy_dict = {'acc': np.zeros(num_trials),
+                  'prec': np.zeros((num_trials, 3)),
+                  'rec': np.zeros((num_trials, 3)),
+                  'f1': np.zeros((num_trials, 3))}
+    metrics_dict = {'svm': deepcopy(dummy_dict), 'rf': deepcopy(dummy_dict)}
+
+    if colour == 'red':
+        with open('../configurations/red_best_svm_config.pickle', 'rb') as f:
+            best_svm_param = pickle.load(f)
+        with open('../configurations/red_best_rf_config.pickle', 'rb') as f:
+            best_rf_param = pickle.load(f)
+
+    if colour == 'white':
+        with open('../configurations/white_best_svm_config.pickle', 'rb') as f:
+            best_svm_param = pickle.load(f)
+        with open('../configurations/white_best_rf_config.pickle', 'rb') as f:
+            best_rf_param = pickle.load(f)
+
+    if verbosity:
+        print(f"###### The best parameters for SVM amd RF are: ######")
+        print(best_svm_param)
+        print(best_rf_param)
+
+    for i in tqdm(range(num_trials)):
+        if colour == 'red':
+            traind_svm, testd_svm = data_pipeline_redwine(verbosity=False, scaling='min_max_norm', over_sample='smote')
+            # Delete quality columns in data frames:
+            traind_svm = traind_svm.drop(columns=['quality'])
+            testd_svm = testd_svm.drop(columns=['quality'])
+            traind_rf, testd_rf = data_pipeline_redwine(verbosity=False, scaling=None, over_sample='smote')
+            # Delete quality columns in data frames:
+            traind_rf = traind_rf.drop(columns=['quality'])
+            testd_rf = testd_rf.drop(columns=['quality'])
+        elif colour == 'white':
+            traind_svm, testd_svm = data_pipeline_redwine(verbosity=False, scaling='standardize', over_sample='smote')
+            # Delete quality columns in data frames:
+            traind_svm = traind_svm.drop(columns=['quality'])
+            testd_svm = testd_svm.drop(columns=['quality'])
+            traind_rf, testd_rf = data_pipeline_redwine(verbosity=False, scaling=None, over_sample='random')
+            # Delete quality columns in data frames:
+            traind_rf = traind_rf.drop(columns=['quality'])
+            testd_rf = testd_rf.drop(columns=['quality'])
+
+
+        metrics = train_svm_model(train_data=traind_svm, label_column='label',
+                                  config=best_svm_param, test_data=testd_svm, verbosity=False)[1:]
+        metrics_dict = make_dict_entries(dict_=metrics_dict, key='svm', idx=i, metrics=metrics)
+
+        metrics = train_random_forest(train_data=traind_rf, label_column='label',
+                                      config=best_rf_param, test_data=testd_rf, verbosity=False)[1:]
+        metrics_dict = make_dict_entries(dict_=metrics_dict, key='rf', idx=i, metrics=metrics)
+
+    if verbosity:
+        print(f"###### The results for the {colour} dataset are ... ######")
+        for key, val in metrics_dict.items():
+            print(f"## Method {key}:")
+            for k, v in val.items():
+                np.set_printoptions(precision=4)
+                mean_v = np.mean(v, axis=0)
+                class_mean_v = np.mean(mean_v)
+                std_v = np.std(v, axis=0)
+                print(f"## {k}: trial means: {mean_v}, "
+                      f"trial std: {std_v}, "
+                      f"class mean: {np.round(class_mean_v, decimals=4)}")
+
+    if save_dir is not None:
+        fp = save_dir + f"improved_results_{colour}.pickle"
+        with open(fp, 'wb') as f:
+            pickle.dump(metrics_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+    return metrics_dict
+
 
 if __name__ == '__main__':
     # generate_baseline_results(colour='red', num_trials=100,
     #                           scaling='standardize', over_sample='random', verbosity=True)
     # run_baseline_grid_search(colour='white', num_trials=100, save_dir='../results/', verbosity=True)
 
-    run_parameter_tuning_svm_rf_red()
+    # run_parameter_tuning_svm_rf_red()
+    # run_parameter_tuning_svm_rf_white()
+
+    generate_improved_results(colour='white', num_trials=100, save_dir='../results/', verbosity=True)
 
     print('done')
