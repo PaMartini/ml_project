@@ -4,7 +4,7 @@ from typing import *
 import numpy as np
 import pandas as pd
 from sklearn.svm import SVC
-from load_data import data_pipeline_redwine
+from load_data import data_pipeline_redwine, data_pipeline_whitewine
 from evaluation import evaluate_class_predictions
 from auxiliary_functions import parameter_tuning_wrapper
 
@@ -106,7 +106,7 @@ def run_parameter_tuning_svm(train_data: pd.DataFrame,
 
 
 if __name__ == '__main__':
-    traind, testd = data_pipeline_redwine()
+    traind, testd = data_pipeline_redwine(scaling='min_max_norm', over_sample='smote')
     # Delete quality columns in data frames:
     traind = traind.drop(columns=['quality'])
     testd = testd.drop(columns=['quality'])
@@ -114,18 +114,28 @@ if __name__ == '__main__':
     # run_parameter_tuning_svm(train_data=traind, label_column='label')
 
     # Train model with best found configuration
-    with open('../results/best_svm_config.pickle', 'rb') as f:
-        best_svm_param = pickle.load(f)
+    with open('../configurations/red_best_svm_config.pickle', 'rb') as f:
+        red_best_svm_param = pickle.load(f)
 
     train_svm_model(train_data=traind,
                     label_column='label',
-                    config=best_svm_param,
+                    config=red_best_svm_param,
                     test_data=testd,
                     verbosity=True)
+
+    traind, testd = data_pipeline_whitewine(scaling='standardize', over_sample='smote')
+    # Delete quality columns in data frames:
+    traind = traind.drop(columns=['quality'])
+    testd = testd.drop(columns=['quality'])
+
+    # run_parameter_tuning_svm(train_data=traind, label_column='label')
+
+    # Train model with best found configuration
+    with open('../configurations/white_best_svm_config.pickle', 'rb') as f:
+        white_best_svm_param = pickle.load(f)
 
     train_svm_model(train_data=traind,
                     label_column='label',
-                    config=None,
+                    config=white_best_svm_param,
                     test_data=testd,
                     verbosity=True)
-

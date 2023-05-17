@@ -8,7 +8,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn import tree
 
-from load_data import data_pipeline_redwine
+from load_data import data_pipeline_redwine, data_pipeline_whitewine
 from evaluation import evaluate_class_predictions
 from auxiliary_functions import parameter_tuning_wrapper
 
@@ -255,7 +255,7 @@ def run_parameter_tuning_rf(train_data: pd.DataFrame,
 
 
 if __name__ == '__main__':
-    traind, testd = data_pipeline_redwine()
+    traind, testd = data_pipeline_redwine(over_sample='smote', scaling=None)
     # Delete quality columns in data frames:
     traind = traind.drop(columns=['quality'])
     testd = testd.drop(columns=['quality'])
@@ -277,11 +277,25 @@ if __name__ == '__main__':
     # Parameter tuning RF
     # run_parameter_tuning_rf(train_data=traind, label_column='label')
 
-    with open('../results/best_rf_config.pickle', 'rb') as f:
-        best_rf_param = pickle.load(f)
+    with open('../configurations/red_best_rf_config.pickle', 'rb') as f:
+        red_best_rf_param = pickle.load(f)
 
     train_random_forest(train_data=traind,
                         label_column='label',
-                        config=best_rf_param,
+                        config=red_best_rf_param,
+                        test_data=testd,
+                        verbosity=True)
+
+    traind, testd = data_pipeline_whitewine(over_sample='random', scaling=None)
+    # Delete quality columns in data frames:
+    traind = traind.drop(columns=['quality'])
+    testd = testd.drop(columns=['quality'])
+
+    with open('../configurations/white_best_rf_config.pickle', 'rb') as f:
+        white_best_rf_param = pickle.load(f)
+
+    train_random_forest(train_data=traind,
+                        label_column='label',
+                        config=white_best_rf_param,
                         test_data=testd,
                         verbosity=True)
