@@ -1,6 +1,10 @@
-
+import numpy as np
+import pandas as pd
 from tqdm import tqdm
 from copy import deepcopy
+import seaborn as sns
+import random
+import matplotlib.pyplot as plt
 from load_data import *
 from naive_bayes import *
 from random_forests import *
@@ -186,10 +190,10 @@ def run_parameter_tuning_svm_rf_white():
                             file_name='../configurations/white_best_rf_config.pickle')
 
 
-def generate_improved_results(colour: str = 'red',
-                              num_trials: int = 100,
-                              save_dir: Union[None, str] = None,
-                              verbosity: bool = False) -> dict:
+def generate_improved_svm_rf_results(colour: str = 'red',
+                                     num_trials: int = 100,
+                                     save_dir: Union[None, str] = None,
+                                     verbosity: bool = False) -> dict:
 
     dummy_dict = {'acc': np.zeros(num_trials),
                   'prec': np.zeros((num_trials, 3)),
@@ -264,6 +268,102 @@ def generate_improved_results(colour: str = 'red',
     return metrics_dict
 
 
+def drop_correlated_features(df: pd.DataFrame,
+                             test_df: pd.DataFrame,
+                             corr_thresh: float = 0.5,
+                             drop_columns: list[str, ...] = None,
+                             verbosity: bool = False) -> Tuple[pd.DataFrame, pd.DataFrame]:
+
+    working_df = df.drop(columns=drop_columns).copy(deep=True)
+    var = working_df.var(axis=0)
+    rand_ = False
+    # Decide whether to choose which of two correlated features at random
+    if np.all(np.around(var.values, decimals=6) == np.around(var.values[0], decimals=6)):
+        rand_ = True
+
+    corr = working_df.corr()
+    np.fill_diagonal(a=corr.values, val=0)
+    drop_features = []
+    features = list(working_df.columns)
+    for ft1 in features:
+        for ft2 in features:
+            if abs(corr.loc[ft1, ft2]) >= corr_thresh:
+                if not rand_:
+                    if var.loc[ft1] >= var.loc[ft2]:
+                        drop_features.append(ft2)
+                    else:
+                        drop_features.append(ft1)
+                else:
+                    drop_features.append(random.choice([ft1, ft2]))
+                    # Or drop ft correlated to more other features
+
+    drop_features = list(set(drop_features))
+    df = df.drop(columns=drop_features).copy(deep=True)
+    test_df = test_df.drop(columns=drop_features).copy(deep=True)
+
+    if verbosity:
+        print(f"Dropped the features {drop_features}")
+        new_corr = df.drop(columns=drop_columns).corr()
+        sns.heatmap(new_corr, xticklabels=new_corr.columns, yticklabels=new_corr.columns, annot=True)
+        #plt.show()
+
+    return df, test_df
+
+
+def generate_improved_nb_results(colour: str = 'red',
+                                 num_trials: int = 100,
+                                 pca_dim: int = -1,
+                                 rem_corr: bool = False,
+                                 save_dir: Union[None, str] = None,
+                                 verbosity: bool = False) -> dict:
+    metrics_dict = {'nb': {'acc': np.zeros(num_trials),
+                           'prec': np.zeros((num_trials, 3)),
+                           'rec': np.zeros((num_trials, 3)),
+                           'f1': np.zeros((num_trials, 3))}}
+
+    for i in tqdm(range(num_trials)):
+        if colour == 'red':
+            traind_nb, testd_nb = data_pipeline_redwine(verbosity=False, scaling='standardize',
+                                                        over_sample=None, pca_dim=pca_dim)
+            # Delete quality columns in data frames:
+            traind_nb = traind_nb.drop(columns=['quality'])
+            testd_nb = testd_nb.drop(columns=['quality'])
+        elif colour == 'white':
+            traind_nb, testd_nb = data_pipeline_redwine(verbosity=False, scaling='standardize',
+                                                        over_sample=None, pca_dim=pca_dim)
+            # Delete quality columns in data frames:
+            traind_nb = traind_nb.drop(columns=['quality'])
+            testd_nb = testd_nb.drop(columns=['quality'])
+
+        if rem_corr:
+            traind_nb, testd_nb = drop_correlated_features(df=traind_nb, test_df=testd_nb,
+                                                           corr_thresh=0.65, drop_columns=['label'], verbosity=True)
+
+        metrics = train_gaussian_naive_bayes(train_data=traind_nb, label_column='label',
+                                             config=None, test_data=testd_nb, verbosity=False)[1:]
+        metrics_dict = make_dict_entries(dict_=metrics_dict, key='nb', idx=i, metrics=metrics)
+
+    if verbosity:
+        print(f"###### The results for the {colour} dataset are ... ######")
+        for key, val in metrics_dict.items():
+            print(f"## Method {key}:")
+            for k, v in val.items():
+                np.set_printoptions(precision=4)
+                mean_v = np.mean(v, axis=0)
+                class_mean_v = np.mean(mean_v)
+                std_v = np.std(v, axis=0)
+                print(f"## {k}: trial means: {mean_v}, "
+                      f"trial std: {std_v}, "
+                      f"class mean: {np.round(class_mean_v, decimals=4)}")
+
+    if save_dir is not None:
+        fp = save_dir + f"improved_results_nb_{colour}.pickle"
+        with open(fp, 'wb') as f:
+            pickle.dump(metrics_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+    return metrics_dict
+
+
 if __name__ == '__main__':
     # generate_baseline_results(colour='red', num_trials=100,
     #                           scaling='standardize', over_sample='random', verbosity=True)
@@ -272,6 +372,15 @@ if __name__ == '__main__':
     # run_parameter_tuning_svm_rf_red()
     # run_parameter_tuning_svm_rf_white()
 
-    generate_improved_results(colour='white', num_trials=100, save_dir='../results/', verbosity=True)
+    # generate_improved_svm_rf_results(colour='white', num_trials=100, save_dir='../results/', verbosity=True)
+    # generate_improved_nb_results(colour='red', pca_dim=-1, rem_corr=False, verbosity=True, num_trials=100)
+
+    for i in list(range(-1, 12)):
+        if i == 0:
+            continue
+        print(f"###### PCA dim {i} ######")
+        generate_improved_nb_results(colour='red', pca_dim=i, rem_corr=False, verbosity=True, num_trials=100)
+
+
 
     print('done')
