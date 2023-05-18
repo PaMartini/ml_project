@@ -304,7 +304,8 @@ def drop_correlated_features(df: pd.DataFrame,
     if verbosity:
         print(f"Dropped the features {drop_features}")
         new_corr = df.drop(columns=drop_columns).corr()
-        sns.heatmap(new_corr, xticklabels=new_corr.columns, yticklabels=new_corr.columns, annot=True)
+        if not len(new_corr.columns) == 0:
+            sns.heatmap(new_corr, xticklabels=new_corr.columns, yticklabels=new_corr.columns, annot=True)
         #plt.show()
 
     return df, test_df
@@ -313,7 +314,7 @@ def drop_correlated_features(df: pd.DataFrame,
 def generate_improved_nb_results(colour: str = 'red',
                                  num_trials: int = 100,
                                  pca_dim: int = -1,
-                                 rem_corr: bool = False,
+                                 rem_corr: Union[None, float] = None,
                                  save_dir: Union[None, str] = None,
                                  verbosity: bool = False) -> dict:
     metrics_dict = {'nb': {'acc': np.zeros(num_trials),
@@ -335,13 +336,17 @@ def generate_improved_nb_results(colour: str = 'red',
             traind_nb = traind_nb.drop(columns=['quality'])
             testd_nb = testd_nb.drop(columns=['quality'])
 
-        if rem_corr:
+        if rem_corr is not None:
             traind_nb, testd_nb = drop_correlated_features(df=traind_nb, test_df=testd_nb,
-                                                           corr_thresh=0.65, drop_columns=['label'], verbosity=True)
+                                                           corr_thresh=rem_corr,
+                                                           drop_columns=['label'],
+                                                           verbosity=False)
 
-        metrics = train_gaussian_naive_bayes(train_data=traind_nb, label_column='label',
-                                             config=None, test_data=testd_nb, verbosity=False)[1:]
-        metrics_dict = make_dict_entries(dict_=metrics_dict, key='nb', idx=i, metrics=metrics)
+        if not traind_nb.shape[1] <= 1:
+            # If all features are removed, this is a failure case. All metrics are 0, continue.
+            metrics = train_gaussian_naive_bayes(train_data=traind_nb, label_column='label',
+                                                 config=None, test_data=testd_nb, verbosity=False)[1:]
+            metrics_dict = make_dict_entries(dict_=metrics_dict, key='nb', idx=i, metrics=metrics)
 
     if verbosity:
         print(f"###### The results for the {colour} dataset are ... ######")
@@ -364,6 +369,24 @@ def generate_improved_nb_results(colour: str = 'red',
     return metrics_dict
 
 
+def test_nb_with_pca(colour: str = 'red'):
+    for i in list(range(-1, 12)):
+        if i == 0:
+            continue
+        print(f"###### PCA dim {i} ######")
+        if i == -1:
+            print("## PCA dim -1 corresponds to no dimensionality reduction.")
+        generate_improved_nb_results(colour=colour, pca_dim=i, rem_corr=None, verbosity=True, num_trials=100)
+
+
+def test_nb_with_feature_selection(colour: str = 'red'):
+    print("###### No feature selection ######")
+    generate_improved_nb_results(colour=colour, pca_dim=-1, rem_corr=None, verbosity=True, num_trials=100)
+    for thresh in [0.3, 0.4, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8]:
+        print(f"###### Correlation threshold {thresh} ######")
+        generate_improved_nb_results(colour=colour, pca_dim=-1, rem_corr=thresh, verbosity=True, num_trials=100)
+
+
 if __name__ == '__main__':
     # generate_baseline_results(colour='red', num_trials=100,
     #                           scaling='standardize', over_sample='random', verbosity=True)
@@ -375,12 +398,10 @@ if __name__ == '__main__':
     # generate_improved_svm_rf_results(colour='white', num_trials=100, save_dir='../results/', verbosity=True)
     # generate_improved_nb_results(colour='red', pca_dim=-1, rem_corr=False, verbosity=True, num_trials=100)
 
-    for i in list(range(-1, 12)):
-        if i == 0:
-            continue
-        print(f"###### PCA dim {i} ######")
-        generate_improved_nb_results(colour='red', pca_dim=i, rem_corr=False, verbosity=True, num_trials=100)
+    # test_nb_with_pca(colour='red')
+    # test_nb_with_pca(colour='white')
 
-
+    # test_nb_with_feature_selection(colour='red')
+    # test_nb_with_feature_selection(colour='white')
 
     print('done')
