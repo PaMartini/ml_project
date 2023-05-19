@@ -9,6 +9,7 @@ from load_data import *
 from naive_bayes import *
 from random_forests import *
 from svm import *
+from auxiliary_functions import create_horizontal_barplot
 
 
 def make_dict_entries(dict_: dict, key: str, idx: int, metrics: Tuple) -> dict:
@@ -387,6 +388,66 @@ def test_nb_with_feature_selection(colour: str = 'red'):
         generate_improved_nb_results(colour=colour, pca_dim=-1, rem_corr=thresh, verbosity=True, num_trials=100)
 
 
+def analyze_models_svm_rf(colour: str = 'red',
+                          num_trials: int = 100,
+                          save_dir: Union[None, str] = None,
+                          verbosity: bool = False) -> Tuple[np.ndarray, np.ndarray]:
+
+    if colour == 'red':
+        with open('../configurations/red_best_rf_config.pickle', 'rb') as f:
+            best_rf_param = pickle.load(f)
+
+    if colour == 'white':
+        with open('../configurations/white_best_rf_config.pickle', 'rb') as f:
+            best_rf_param = pickle.load(f)
+
+    svm_coef = np.zeros((num_trials, 3, 11))
+    rf_ft_import = np.zeros((num_trials, 11))
+    for i in tqdm(range(num_trials)):
+        if colour == 'red':
+            traind_svm, _ = data_pipeline_redwine(verbosity=False, scaling='min_max_norm', over_sample='smote')
+            # Delete quality columns in data frames:
+            traind_svm = traind_svm.drop(columns=['quality'])
+
+            traind_rf, testd_rf = data_pipeline_redwine(verbosity=False, scaling=None, over_sample='smote')
+            # Delete quality columns in data frames:
+            traind_rf = traind_rf.drop(columns=['quality'])
+        elif colour == 'white':
+            traind_svm, _ = data_pipeline_redwine(verbosity=False, scaling='standardize', over_sample='smote')
+            # Delete quality columns in data frames:
+            traind_svm = traind_svm.drop(columns=['quality'])
+
+            traind_rf, _ = data_pipeline_redwine(verbosity=False, scaling=None, over_sample='random')
+            # Delete quality columns in data frames:
+            traind_rf = traind_rf.drop(columns=['quality'])
+
+        svm_model = train_svm_model(train_data=traind_svm, label_column='label',
+                                    config=None, test_data=None, verbosity=False)
+
+        rf_model = train_random_forest(train_data=traind_rf, label_column='label',
+                                       config=best_rf_param, test_data=None, verbosity=False)
+
+        svm_coef[i, :] = svm_model.coef_
+        rf_ft_import[i, :] = rf_model.feature_importances_
+
+    if verbosity:
+        print(f"###### The results for the {colour} dataset are ... ######")
+        ft_import_m = rf_ft_import.mean(axis=0)
+        svm_coef_m = svm_coef.mean(axis=0)
+        print(svm_coef_m)
+        print(ft_import_m)
+
+        la = list(traind_rf.columns[0:-1])
+
+        create_horizontal_barplot(a=ft_import_m, labels=la)
+
+        create_horizontal_barplot(a=svm_coef_m[0, :], labels=la)
+        create_horizontal_barplot(a=svm_coef_m[1, :], labels=la)
+        create_horizontal_barplot(a=svm_coef_m[2, :], labels=la)
+
+    return svm_coef, rf_ft_import
+
+
 if __name__ == '__main__':
     # generate_baseline_results(colour='red', num_trials=100,
     #                           scaling='standardize', over_sample='random', verbosity=True)
@@ -403,5 +464,8 @@ if __name__ == '__main__':
 
     # test_nb_with_feature_selection(colour='red')
     # test_nb_with_feature_selection(colour='white')
+
+    # analyze_models_svm_rf(colour='red', num_trials=100, verbosity=True)
+    analyze_models_svm_rf(colour='white', num_trials=100, verbosity=True)
 
     print('done')
