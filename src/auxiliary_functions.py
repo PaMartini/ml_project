@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import sklearn.metrics as metr
 from sklearn.model_selection import GridSearchCV
+import matplotlib.pyplot as plt
 
 
 def custom_metric(y_true: np.ndarray,
@@ -99,4 +100,17 @@ def parameter_tuning_wrapper(classifier: Any,
             pickle.dump(best_param, f, protocol=pickle.HIGHEST_PROTOCOL)
 
     return best_param
+
+
+def create_horizontal_barplot(a: np.ndarray, labels: list[str, ...]):
+    plt.barh(y=np.arange(a.shape[0]),
+             width=a,
+             height=0.8,
+             tick_label=labels)
+
+    for i in range(a.shape[0]):
+        plt.text(x=a[i], y=i, s=np.round(a[i], decimals=4), ha='right')
+    plt.tight_layout()
+    plt.show()
+    return
 
