@@ -44,8 +44,8 @@ class WineDataset(Dataset):
 
 def get_data_loaders_wine_data(colour: str = 'red',
                                val_and_test: bool = False,
-                               scaling: Tuple[None, str] = None,
-                               over_sample: Tuple[None, str] = None,
+                               scaling: Union[None, str] = None,
+                               over_sample: Union[None, str] = None,
                                batch_size: int = 1,
                                label_column: str = 'label',
                                drop_column: list[str, ...] = None,
@@ -118,32 +118,44 @@ class WineNet(torch.nn.Module):
         self.in_size = in_size
         self.out_size = out_size
         self.net = nn.Sequential(
-            nn.Linear(in_features=self.in_size, out_features=2 * self.in_size),
-            nn.LeakyReLU(),
-            nn.Linear(in_features=2 * self.in_size, out_features=6 * self.in_size),
+            nn.Linear(in_features=self.in_size, out_features=6 * self.in_size),
             nn.LeakyReLU(),
             nn.Linear(in_features=6 * self.in_size, out_features=6 * self.in_size),
             nn.LeakyReLU(),
-            nn.Linear(in_features=6 * self.in_size, out_features=2 * self.in_size),
+            nn.Linear(in_features=6 * self.in_size, out_features=6 * self.in_size),
             nn.LeakyReLU(),
-            nn.Linear(in_features=2 * self.in_size, out_features=self.out_size),
-        )
-
-        self.net2 = nn.Sequential(
-            nn.Linear(in_features=self.in_size, out_features=4 * self.in_size),
-            nn.LeakyReLU(),
-            nn.Linear(in_features=4 * self.in_size, out_features=4 * self.in_size),
-            nn.LeakyReLU(),
-            nn.Linear(in_features=4 * self.in_size, out_features=4 * self.in_size),
+            nn.Linear(in_features=6 * self.in_size, out_features=4 * self.in_size),
             nn.LeakyReLU(),
             nn.Linear(in_features=4 * self.in_size, out_features=self.out_size),
         )
 
-        self.last_activation = nn.Sigmoid()
+        self.net2 = nn.Sequential(
+            nn.Linear(in_features=self.in_size, out_features=6 * self.in_size),
+            nn.LeakyReLU(),
+            nn.Linear(in_features=6 * self.in_size, out_features=6 * self.in_size),
+            nn.LeakyReLU(),
+            nn.Linear(in_features=6 * self.in_size, out_features=6 * self.in_size),
+            torch.nn.Dropout(p=0.5, inplace=False),
+            nn.LeakyReLU(),
+            nn.Linear(in_features=6 * self.in_size, out_features=6 * self.in_size),
+            torch.nn.Dropout(p=0.5, inplace=False),
+            nn.LeakyReLU(),
+            nn.Linear(in_features=6 * self.in_size, out_features=6 * self.in_size),
+            torch.nn.Dropout(p=0.5, inplace=False),
+            nn.LeakyReLU(),
+            nn.Linear(in_features=6 * self.in_size, out_features=6 * self.in_size),
+            torch.nn.Dropout(p=0.5, inplace=False),
+            nn.LeakyReLU(),
+            nn.Linear(in_features=6 * self.in_size, out_features=self.out_size),
+            torch.nn.Dropout(p=0.5, inplace=False),
+        )
+
+        # self.last_activation = nn.Sigmoid()
+        self.last_activation = nn.Softmax(dim=1)
 
     def forward(self, x):
-        x = self.net2(x)
-        # x = self.last_activation(x)
+        x = self.net(x)
+        x = self.last_activation(x)
         return x
 
 
@@ -207,7 +219,7 @@ def plot_metrics(metrics_dict: dict, single_plots: bool = False) -> None:
         if key == 'accuracy':
             labels = key
         else:
-            labels = np.array([key + " " + str(j) for j in range(3)])
+            labels = np.array([key + " " + str(j) for j in range(metrics_dict[key].shape[1])])
         plt.plot(np.arange(len(metrics_dict[key])), metrics_dict[key], label=labels)
         if single_plots:
             plt.legend()
@@ -255,7 +267,8 @@ def calc_class_weights(train_loader, verbosity: bool = False) -> torch.Tensor:
         if i == 0:
             class_counts = y.sum(axis=0)
             batch_size = y.shape[0]
-        class_counts += y.sum(axis=0)
+        else:
+            class_counts += y.sum(axis=0)
 
     n_samples = batch_size * len(train_loader)
     n_classes = class_counts.shape[0]
@@ -366,9 +379,9 @@ def run_training(n_epochs: int = 20,
 
     train_loader, val_loader, labels = get_data_loaders_wine_data(colour='red',
                                                                   val_and_test=False,
-                                                                  scaling=None,
-                                                                  over_sample=None,
-                                                                  batch_size=20,
+                                                                  scaling='min_max_norm',
+                                                                  over_sample='random',
+                                                                  batch_size=10,
                                                                   label_column='label',
                                                                   drop_column=['quality'],
                                                                   shuffle=True)
@@ -376,14 +389,13 @@ def run_training(n_epochs: int = 20,
     # Initialize model with the correct shape.
     model = WineNet(in_size=11, out_size=num_labels)
     # Initialize optimizer.
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001, weight_decay=0.0)
     # Calculate class weights
+    # class_weights = None
     class_weights = calc_class_weights(train_loader=train_loader, verbosity=True)
-    # class_weights = torch.tensor([48/100, 2/100, 48/100])
     # Initialize loss function
-    # loss_fct = nn.CrossEntropyLoss(weight=class_weights, reduction='mean', label_smoothing=0)
-    loss_fct = FocalLoss(include_background=True, gamma=6.0, weight=class_weights, reduction='mean')
-    # loss_fct = nn.CrossEntropyLoss(reduction='mean', label_smoothing=0)
+    loss_fct = nn.CrossEntropyLoss(weight=class_weights, reduction='mean', label_smoothing=0)
+    # loss_fct = FocalLoss(include_background=True, gamma=2.0, weight=class_weights, reduction='mean')
 
     trained_model, train_losses, val_losses, metrics_dict = train_loop(train_loader=train_loader,
                                                                        val_loader=val_loader,
@@ -447,10 +459,11 @@ def load_test_model(model_name: str, checkpoint_dir: str = "../checkpoints/") ->
             predictions = np.hstack((predictions, pred))
             val_gt_labels = np.hstack((val_gt_labels, int_y))
     evaluate_class_predictions(prediction=predictions, ground_truth=val_gt_labels, labels=labels, verbosity=True)
+    # train on all data, validate on red/white
 
 
 if __name__ == '__main__':
-    run_training(n_epochs=200, test=True, plot_losses=True, save_losses=False, plot_save_metrics=True)
+    run_training(n_epochs=600, test=True, plot_losses=True, save_losses=False, plot_save_metrics=True)
     # load_test_model(model_name='model_20230502-101737.pt')
 
     print('done')
