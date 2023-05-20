@@ -135,10 +135,8 @@ class WineNet(torch.nn.Module):
             nn.Linear(in_features=6 * self.in_size, out_features=6 * self.in_size),
             nn.LeakyReLU(),
             nn.Linear(in_features=6 * self.in_size, out_features=6 * self.in_size),
-            torch.nn.Dropout(p=0.5, inplace=False),
             nn.LeakyReLU(),
             nn.Linear(in_features=6 * self.in_size, out_features=6 * self.in_size),
-            torch.nn.Dropout(p=0.5, inplace=False),
             nn.LeakyReLU(),
             nn.Linear(in_features=6 * self.in_size, out_features=6 * self.in_size),
             torch.nn.Dropout(p=0.5, inplace=False),
@@ -147,14 +145,32 @@ class WineNet(torch.nn.Module):
             torch.nn.Dropout(p=0.5, inplace=False),
             nn.LeakyReLU(),
             nn.Linear(in_features=6 * self.in_size, out_features=self.out_size),
-            torch.nn.Dropout(p=0.5, inplace=False),
         )
 
-        # self.last_activation = nn.Sigmoid()
+        self.net3 = nn.Sequential(
+            nn.Linear(in_features=self.in_size, out_features=9 * self.in_size),
+            nn.LeakyReLU(),
+            nn.Linear(in_features=9 * self.in_size, out_features=9 * self.in_size),
+            nn.LeakyReLU(),
+            nn.Linear(in_features=9 * self.in_size, out_features=9 * self.in_size),
+            nn.LeakyReLU(),
+            nn.Linear(in_features=9 * self.in_size, out_features=9 * self.in_size),
+            nn.LeakyReLU(),
+            nn.Linear(in_features=9 * self.in_size, out_features=9 * self.in_size),
+            torch.nn.Dropout(p=0.5, inplace=False),
+            nn.LeakyReLU(),
+            nn.Linear(in_features=9 * self.in_size, out_features=6 * self.in_size),
+            torch.nn.Dropout(p=0.5, inplace=False),
+            nn.LeakyReLU(),
+            nn.Linear(in_features=6 * self.in_size, out_features=4 * self.in_size),
+            nn.LeakyReLU(),
+            nn.Linear(in_features=4 * self.in_size, out_features=self.out_size),
+        )
+
         self.last_activation = nn.Softmax(dim=1)
 
     def forward(self, x):
-        x = self.net(x)
+        x = self.net2(x)
         x = self.last_activation(x)
         return x
 
@@ -245,12 +261,6 @@ def check_model():
     """
     model = WineNet()
     summary(model, input_size=(11,))
-
-
-def custom_loss(model_out: torch.Tensor, labels: torch.Tensor):
-    # Todo
-
-    return
 
 
 def calc_class_weights(train_loader, verbosity: bool = False) -> torch.Tensor:
@@ -414,7 +424,7 @@ def run_training(n_epochs: int = 20,
         plot_loss(train_loss=train_losses, val_loss=val_losses)
 
     if plot_save_metrics:
-        with open('metrics_dict.pickle', 'wb') as f:
+        with open('../checkpoints/metrics_dict.pickle', 'wb') as f:
             pickle.dump(metrics_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
         plot_metrics(metrics_dict=metrics_dict, single_plots=False)
 
@@ -464,7 +474,6 @@ def load_test_model(model_name: str, checkpoint_dir: str = "../checkpoints/") ->
 
 if __name__ == '__main__':
     run_training(n_epochs=600, test=True, plot_losses=True, save_losses=False, plot_save_metrics=True)
-    # load_test_model(model_name='model_20230502-101737.pt')
 
     print('done')
 
