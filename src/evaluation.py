@@ -17,19 +17,13 @@ def evaluate_class_predictions(prediction: np.ndarray,
     :param verbosity: Whether to print computed performance metrics, or not.
     :return: None
     """
-    if labels.shape[0] == 2:
-        accuracy = metr.accuracy_score(y_true=ground_truth, y_pred=prediction)
-        precision = metr.precision_score(y_true=ground_truth, y_pred=prediction)
-        recall = metr.recall_score(y_true=ground_truth, y_pred=prediction)
-        f1 = metr.f1_score(y_true=ground_truth, y_pred=prediction)
-    else:
-        accuracy = metr.accuracy_score(y_true=ground_truth, y_pred=prediction)
-        precision = metr.precision_score(y_true=ground_truth, y_pred=prediction,
-                                         labels=labels, average=None, zero_division=0)
-        recall = metr.recall_score(y_true=ground_truth, y_pred=prediction,
-                                   labels=labels, average=None, zero_division=0)
-        f1 = metr.f1_score(y_true=ground_truth, y_pred=prediction,
-                           labels=labels, average=None, zero_division=0)
+    accuracy = metr.accuracy_score(y_true=ground_truth, y_pred=prediction)
+    precision = metr.precision_score(y_true=ground_truth, y_pred=prediction,
+                                     labels=labels, average=None, zero_division=0)
+    recall = metr.recall_score(y_true=ground_truth, y_pred=prediction,
+                               labels=labels, average=None, zero_division=0)
+    f1 = metr.f1_score(y_true=ground_truth, y_pred=prediction,
+                       labels=labels, average=None, zero_division=0)
 
     if verbosity:
         for l in labels:
