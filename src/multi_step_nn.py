@@ -91,7 +91,7 @@ def run_multistep_training(n_epochs: Tuple[int, int] = (20, 20),
                            save_losses: bool = False,
                            plot_save_metrics: bool = False):
 
-    a, b = get_multi_step_dfs(colour='red',
+    a, b = get_multi_step_dfs(colour='white',
                               scaling='min_max_norm',
                               over_sample='random',
                               drop_column=['quality'])
@@ -135,6 +135,10 @@ def run_multistep_training(n_epochs: Tuple[int, int] = (20, 20),
                                                                                    track_metrics=plot_save_metrics,
                                                                                    save=True,
                                                                                    verbosity=True)
+    if plot_losses:
+        plot_loss(train_loss=train_losses_mm, val_loss=val_losses_mm)
+    if plot_save_metrics:
+        plot_metrics(metrics_dict=metrics_dict_mm, single_plots=False)
 
     trained_model_min, train_losses_min, val_losses_min, metrics_dict_min = train_loop(train_loader=trainl_min,
                                                                                        val_loader=testl_min,
@@ -150,7 +154,6 @@ def run_multistep_training(n_epochs: Tuple[int, int] = (20, 20),
         np.save('train_losses_mm.npy', train_losses_mm)
         np.save('val_losses_mm.npy', val_losses_mm)
     if plot_losses:
-        plot_loss(train_loss=train_losses_mm, val_loss=val_losses_mm)
         plot_loss(train_loss=train_losses_min, val_loss=val_losses_min)
 
     if plot_save_metrics:
@@ -158,7 +161,6 @@ def run_multistep_training(n_epochs: Tuple[int, int] = (20, 20),
             pickle.dump(metrics_dict_mm, f, protocol=pickle.HIGHEST_PROTOCOL)
         with open('metrics_dict_min.pickle', 'wb') as f:
             pickle.dump(metrics_dict_min, f, protocol=pickle.HIGHEST_PROTOCOL)
-        plot_metrics(metrics_dict=metrics_dict_mm, single_plots=False)
         plot_metrics(metrics_dict=metrics_dict_min, single_plots=False)
 
     if test:
@@ -189,6 +191,7 @@ def multistep_validation(testl_min: DataLoader,
             pred_array[mm_pred == 0] = 1
             # For samples predicted to be in minority class, if some exist, pass through second net
             if (mm_pred == 1).sum() >= 1:
+                print('############## fuck')
                 min_samples = x[mm_pred == 1, :]
                 min_out = model_min(min_samples)
                 min_pred = np.array(torch.argmax(min_out, dim=1).detach())
@@ -205,7 +208,7 @@ def multistep_validation(testl_min: DataLoader,
 
 
 if __name__ == '__main__':
-    run_multistep_training(n_epochs=(50, 50), test=True, plot_losses=True, plot_save_metrics=True)
+    run_multistep_training(n_epochs=(100, 100), test=True, plot_losses=True, plot_save_metrics=True)
 
     print('done')
 
