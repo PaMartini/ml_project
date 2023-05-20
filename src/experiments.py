@@ -10,6 +10,7 @@ from naive_bayes import *
 from random_forests import *
 from svm import *
 from auxiliary_functions import create_horizontal_barplot
+from neural_net import run_training
 
 
 def make_dict_entries(dict_: dict, key: str, idx: int, metrics: Tuple) -> dict:
@@ -466,6 +467,6 @@ if __name__ == '__main__':
     # test_nb_with_feature_selection(colour='white')
 
     # analyze_models_svm_rf(colour='red', num_trials=100, verbosity=True)
-    analyze_models_svm_rf(colour='white', num_trials=100, verbosity=True)
+    # analyze_models_svm_rf(colour='white', num_trials=100, verbosity=True)
 
     print('done')
