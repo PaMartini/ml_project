@@ -4,8 +4,8 @@ import numpy as np
 import sklearn as sk
 import sklearn.model_selection
 from sklearn.decomposition import PCA
-from imblearn.over_sampling import RandomOverSampler
-from imblearn.over_sampling import SMOTE
+from imblearn.over_sampling import RandomOverSampler, SMOTE
+from imblearn.under_sampling import RandomUnderSampler
 import matplotlib.pyplot as plt
 from typing import *
 
@@ -238,7 +238,8 @@ def apply_fct_to_data(data: pd.DataFrame,
 def calc_oversampling_strategy(y: np.ndarray) -> dict:
     """
     Function for computing a sampling strategy dictionary.
-    Try to equalize number of samples per class, but do not go over 2 times the original number of class samples.
+    Try to equalize number of samples per class by oversampling minority classes,
+    but do not go over 2 times the original number of class samples.
     :param y: Label vector.
     :return: Dictionary with classes as keys and desired number of samples for each class as values.
     """
@@ -256,11 +257,42 @@ def calc_oversampling_strategy(y: np.ndarray) -> dict:
     return strategy_dict
 
 
+def calc_undersampling_strategy(y: np.ndarray) -> dict:
+    """
+    Function for computing a sampling strategy dictionary.
+    Try to equalize number of samples per class by undersampling the majority class,
+     but do not go under 1/2 times the original number of class samples.
+    :param y: Label vector.
+    :return: Dictionary with classes as keys and desired number of samples for each class as values.
+    """
+    unique_labels = np.unique(y)
+    num_class_dict = {}
+    for l in unique_labels:
+        num_class_dict[l] = (y == l).sum()
+    majority_class = max(num_class_dict, key=num_class_dict.get)
+    smallest_minority_class = min(num_class_dict, key=num_class_dict.get)
+    strategy_dict = {}
+
+    for l in unique_labels:
+        if l != majority_class:
+            strategy_dict[l] = num_class_dict[l]
+    # Set number of samples for majority class
+    if num_class_dict[majority_class] / 2 >= num_class_dict[smallest_minority_class]:
+        strategy_dict[majority_class] = int(np.ceil(num_class_dict[majority_class] / 2))
+    else:
+        strategy_dict[majority_class] = num_class_dict[smallest_minority_class]
+
+    print(f"################# dict: {strategy_dict}")
+
+    return strategy_dict
+
+
 def preprocess_wine(data: pd.DataFrame,
                     shuffle: bool = False,
                     preserve_class_dist: bool = False,
                     val_and_test: bool = False,
                     over_sample: str = None,
+                    under_sample: Union[None, str] = None,
                     scaling: str = 'standardize',
                     pca_dim: int = -1,
                     labelling: str = 'bmg',
@@ -272,7 +304,8 @@ def preprocess_wine(data: pd.DataFrame,
     :param preserve_class_dist: Whether to approximately preserve the class distribution in the data
     when performing the split, or not.
     :param val_and_test: Whether to split the data into a train, val and test or a train and test set.
-    :param over_sample: Available if 'labelling == 'bmg'', whether to resample the minority classes or not.
+    :param over_sample: Available if 'labelling == 'bmg', whether to resample the minority classes or not.
+    :param under_sample: Available if 'labelling == 'bmg', whether to undersample the majority class or not.
     :param scaling: Which scaling method to apply to the data.
     :param pca_dim: Principal components of PCA dimensionality reduction. Default -1 corresponds to no reduction.
     :param labelling: Sets how to label the data.
@@ -443,6 +476,21 @@ def preprocess_wine(data: pd.DataFrame,
                           f"{num_med} ({(num_med / num_train_samples).round(decimals=4)}%) medium, "
                           f"{num_good} ({(num_good / num_train_samples).round(decimals=4)}%) good samples. ")
 
+            if under_sample is not None:
+                if under_sample == 'random':
+                    rus = RandomUnderSampler(sampling_strategy=calc_undersampling_strategy, replacement=False)
+                    traind, _ = rus.fit_resample(X=traind, y=traind.loc[:, 'label'].values)
+
+                if verbosity:
+                    num_train_samples = traind.shape[0]
+                    num_bad = (traind.loc[:, 'label'].values == 0).sum()
+                    num_med = (traind.loc[:, 'label'].values == 1).sum()
+                    num_good = (traind.loc[:, 'label'].values == 2).sum()
+                    print(f"After undersampling the training set consists of {num_train_samples} samples with "
+                          f"are {num_bad} ({(num_bad / num_train_samples).round(decimals=4)}%) bad, "
+                          f"{num_med} ({(num_med / num_train_samples).round(decimals=4)}%) medium, "
+                          f"{num_good} ({(num_good / num_train_samples).round(decimals=4)}%) good samples. ")
+
         return traind, testd
 
 
@@ -450,6 +498,7 @@ def data_pipeline_redwine(shuffle: bool = True,
                           preserve_class_dist: bool = True,
                           val_and_test: bool = False,
                           over_sample: Union[str, None] = None,
+                          under_sample: Union[str, None] = None,
                           scaling: Union[str, None] = None,
                           pca_dim: int = -1,
                           labelling: str = 'bmg',
@@ -465,6 +514,7 @@ def data_pipeline_redwine(shuffle: bool = True,
                            preserve_class_dist=preserve_class_dist,
                            val_and_test=val_and_test,
                            over_sample=over_sample,
+                           under_sample=under_sample,
                            scaling=scaling,
                            pca_dim=pca_dim,
                            labelling=labelling,
@@ -475,6 +525,7 @@ def data_pipeline_whitewine(shuffle: bool = True,
                             preserve_class_dist: bool = True,
                             val_and_test: bool = False,
                             over_sample: Union[str, None] = None,
+                            under_sample: Union[str, None] = None,
                             scaling: Union[str, None] = None,
                             pca_dim: int = -1,
                             labelling: str = 'bmg',
@@ -490,6 +541,7 @@ def data_pipeline_whitewine(shuffle: bool = True,
                            preserve_class_dist=preserve_class_dist,
                            val_and_test=val_and_test,
                            over_sample=over_sample,
+                           under_sample=under_sample,
                            scaling=scaling,
                            pca_dim=pca_dim,
                            labelling=labelling,
@@ -500,6 +552,7 @@ def data_pipeline_concat_red_white(shuffle: bool = True,
                                    preserve_class_dist: bool = True,
                                    val_and_test: bool = False,
                                    over_sample: Union[str, None] = None,
+                                   under_sample: Union[str, None] = None,
                                    scaling: Union[str, None] = None,
                                    pca_dim: int = -1,
                                    labelling: str = 'bmg',
@@ -517,10 +570,12 @@ def data_pipeline_concat_red_white(shuffle: bool = True,
                            preserve_class_dist=preserve_class_dist,
                            val_and_test=val_and_test,
                            over_sample=over_sample,
+                           under_sample=under_sample,
                            scaling=scaling,
                            pca_dim=pca_dim,
                            labelling=labelling,
                            verbosity=verbosity)
+
 
 if __name__ == '__main__':
     # load_wine("../data/wine_data/winequality-red.csv", verbosity=True)
