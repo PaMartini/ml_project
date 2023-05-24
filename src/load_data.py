@@ -581,16 +581,27 @@ if __name__ == '__main__':
     # load_wine("../data/wine_data/winequality-red.csv", verbosity=True)
     # load_wine("../data/wine_data/winequality-white.csv", verbosity=True)
 
-    out_red = data_pipeline_redwine(verbosity=True, scaling='min_max_norm', pca_dim=-1)[0]
-    plt.scatter(x=out_red.values[:, 0], y=out_red.values[:, 1], c=out_red.values[:, 12])
+    trainr = data_pipeline_redwine(verbosity=True, scaling='standardize', pca_dim=-1)[0]
+    print(trainr.columns)
+    quality = trainr.loc[:, 'label'].values
+    alc = trainr.loc[:, 'alcohol'].values
+    sulph = trainr.loc[:, 'sulphates'].values
+    vol_acid = trainr.loc[:, 'volatile acidity'].values
+
+    plt.scatter(x=alc, y=sulph, c=quality)
     plt.show()
-    out_white = data_pipeline_whitewine(verbosity=True, scaling='min_max_norm', pca_dim=-1)[0]
-    plt.scatter(x=out_white.values[:, 0], y=out_white.values[:, 1], c=out_white.values[:, 12])
+
+    plt.scatter(x=alc, y=vol_acid, c=quality)
     plt.show()
+
+    plt.scatter(x=sulph, y=vol_acid, c=quality)
+    plt.show()
+
+    # out_white = data_pipeline_whitewine(verbosity=True, scaling='min_max_norm', pca_dim=-1)[0]
+    # plt.scatter(x=out_white.values[:, 0], y=out_white.values[:, 1], c=out_white.values[:, 12])
+    # plt.show()
+
     # out_concat = data_pipeline_concat_red_white()
-
-
-
 
     # fn_white = "../data/wine_data/winequality-white.csv"
     # data_white = load_wine(filename=fn_white, verbosity=True)
